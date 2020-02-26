@@ -11,7 +11,7 @@ install:
   - pipenv install --system --deploy
   - pip install --no-cache-dir .
 
-#script:
+script: skip
 #  - cd tests
 #  - pytest
 #  - cd ..

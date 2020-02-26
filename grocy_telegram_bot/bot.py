@@ -21,7 +21,7 @@ LOGGER.setLevel(logging.DEBUG)
 COMMAND_START = "start"
 
 COMMAND_CHORES = ["chores", "ch"]
-COMMAND_SHOPPING_LIST = ["shopping_lists", "sl"]
+COMMAND_SHOPPING_LIST = ["shopping_list", "sl"]
 
 COMMAND_STATS = 'stats'
 

@@ -11,10 +11,10 @@ install:
   - pipenv install --system --deploy
   - pip install --no-cache-dir .
 
-script:
-  - cd tests
-  - pytest
-  - cd ..
+#script:
+#  - cd tests
+#  - pytest
+#  - cd ..
 
 before_deploy:
   docker build -t markusressel/grocy-telegram-bot .

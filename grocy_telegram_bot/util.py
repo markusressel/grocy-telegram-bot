@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+from datetime import datetime
 from io import BytesIO
 
 from emoji import emojize
@@ -92,6 +93,12 @@ def _format_caption(text: str) -> str or None:
         text = text[:197] + "…"
 
     return text
+
+
+def datetime_fmt_date_only(d: datetime):
+    time = d.astimezone()
+    fmt = "%x"
+    return time.strftime(fmt)
 
 
 def send_message(bot: Bot, chat_id: str, message: str, parse_mode: str = None, reply_to: int = None):

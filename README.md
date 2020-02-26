@@ -24,7 +24,7 @@ pip3 install grocy-telegram-bot
 to provide configuration via a YAML file as well as ENV variables. Have a look at the 
 [documentation about it](https://github.com/markusressel/container-app-conf).
 
-See [grocy_telegram_bot.yaml](/grocy_telegram_bot.yaml) for an example in this repo.
+See [grocy_telegram_bot_example.yaml](/grocy_telegram_bot_example.yaml) for an example in this repo.
 
 ## Docker
 

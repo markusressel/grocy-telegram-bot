@@ -1,11 +1,8 @@
 import logging
 import os
 import sys
-from pathlib import Path
 
 from container_app_conf.formatter.toml import TomlFormatter
-from container_app_conf.formatter.yaml import YamlFormatter
-from container_app_conf.util import write_reference
 
 from grocy_telegram_bot.bot import GrocyTelegramBot
 from grocy_telegram_bot.config import Config
@@ -18,8 +15,7 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.DEBUG)
 
 if __name__ == '__main__':
-    config = Config(validate=False)
-    write_reference(config, Path("grocy_telegram_bot.yml"), YamlFormatter())
+    config = Config()
 
     LOGGER.debug("Config:\n{}".format(config.print(TomlFormatter())))
 

@@ -1,5 +1,8 @@
 import logging
+from datetime import datetime
 
+from pygrocy import Grocy
+from pygrocy.grocy import Chore
 from telegram import Update, ParseMode
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, \
     CallbackContext
@@ -9,13 +12,16 @@ from telegram_click.permission.base import Permission
 
 from grocy_telegram_bot.config import Config
 from grocy_telegram_bot.stats import format_metrics, START_TIME
-from grocy_telegram_bot.util import send_message
+from grocy_telegram_bot.util import send_message, datetime_fmt_date_only
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.DEBUG)
 
 COMMAND_START = "start"
+
+COMMAND_CHORES = ["chores", "ch"]
+
 COMMAND_STATS = 'stats'
 
 COMMAND_COMMANDS = ['help', 'h']
@@ -26,7 +32,7 @@ COMMAND_CONFIG = ['config', 'c']
 class _ConfigAdmins(Permission):
 
     def __init__(self):
-        self._config = Config(validate=False)
+        self._config = Config()
 
     def evaluate(self, update: Update, context: CallbackContext) -> bool:
         from_user = update.effective_message.from_user
@@ -47,6 +53,10 @@ class GrocyTelegramBot:
         :param config: configuration object
         """
         self._config = config
+        self._grocy = Grocy(
+            base_url=f"http://{config.GROCY_HOST.value}",
+            api_key=config.GROCY_API_KEY.value,
+            port=config.GROCY_PORT.value)
 
         self._updater = Updater(token=self._config.TELEGRAM_BOT_TOKEN.value, use_context=True)
         LOGGER.debug("Using bot id '{}' ({})".format(self._updater.bot.id, self._updater.bot.name))
@@ -57,6 +67,9 @@ class GrocyTelegramBot:
             CommandHandler(COMMAND_START,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._start_callback),
+            CommandHandler(COMMAND_CHORES,
+                           filters=(~ Filters.reply) & (~ Filters.forwarded),
+                           callback=self._chores_callback),
             CommandHandler(COMMAND_STATS,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._stats_callback),
@@ -99,13 +112,55 @@ class GrocyTelegramBot:
     @START_TIME.time()
     def _start_callback(self, update: Update, context: CallbackContext) -> None:
         """
-        Welcomes a new user with an example image and a greeting message
+        Welcomes a new user with a greeting message
         :param update: the chat update object
         :param context: telegram context
         """
         bot = context.bot
         chat_id = update.effective_chat.id
-        send_message(bot, chat_id, "Not implemented")
+        user_first_name = update.effective_user.first_name
+
+        if not CONFIG_ADMINS.evaluate(update, context):
+            send_message(bot, chat_id, "Sorry, you do not have permissions to use this bot.")
+            return
+
+        send_message(bot, chat_id,
+                     f"Welcome {user_first_name},\nthis is your grocy-telegram-bot instance, ready to go!")
+
+    @command(
+        name=COMMAND_CHORES,
+        description="List chores.",
+        permissions=CONFIG_ADMINS
+    )
+    def _chores_callback(self, update: Update, context: CallbackContext) -> None:
+        """
+        Show a list of all chores
+        :param update: the chat update object
+        :param context: telegram context
+        """
+        bot = context.bot
+        chat_id = update.effective_chat.id
+
+        chores = self._grocy.chores(True)
+        overdue = filter(lambda x: x.next_estimated_execution_time < datetime.now().astimezone(), chores)
+        item_texts = list(map(self._chore_to_str, overdue))
+        text = "\n".join([
+            "**Overdue Chores:**",
+            "",
+            *item_texts])
+
+        send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
+
+    def _chore_to_str(self, chore: Chore) -> str:
+        """
+        Converts a chore object into a string representation suitable for a telegram chat
+        :param chore: the chore item
+        :return: a text representation
+        """
+        return "\n".join([
+            chore.name,
+            "  Due: " + datetime_fmt_date_only(chore.next_estimated_execution_time)
+        ])
 
     @command(
         name=COMMAND_STATS,

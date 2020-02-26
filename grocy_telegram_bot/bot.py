@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 
 from pygrocy import Grocy
-from pygrocy.grocy import Chore
+from pygrocy.grocy import Chore, ShoppingListProduct
 from telegram import Update, ParseMode
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, \
     CallbackContext
@@ -21,6 +21,7 @@ LOGGER.setLevel(logging.DEBUG)
 COMMAND_START = "start"
 
 COMMAND_CHORES = ["chores", "ch"]
+COMMAND_SHOPPING_LIST = ["shopping_lists", "sl"]
 
 COMMAND_STATS = 'stats'
 
@@ -70,6 +71,9 @@ class GrocyTelegramBot:
             CommandHandler(COMMAND_CHORES,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._chores_callback),
+            CommandHandler(COMMAND_SHOPPING_LIST,
+                           filters=(~ Filters.reply) & (~ Filters.forwarded),
+                           callback=self._shopping_lists_callback),
             CommandHandler(COMMAND_STATS,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._stats_callback),
@@ -159,13 +163,12 @@ class GrocyTelegramBot:
             "",
             "*Other:*",
             *other_item_texts
-        ])
-
-        text = text.strip()
+        ]).strip()
 
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
 
-    def _chore_to_str(self, chore: Chore) -> str:
+    @staticmethod
+    def _chore_to_str(chore: Chore) -> str:
         """
         Converts a chore object into a string representation suitable for a telegram chat
         :param chore: the chore item
@@ -175,6 +178,38 @@ class GrocyTelegramBot:
             chore.name,
             "  Due: " + datetime_fmt_date_only(chore.next_estimated_execution_time)
         ])
+
+    @command(
+        name=COMMAND_SHOPPING_LIST,
+        description="List shopping lists.",
+        permissions=CONFIG_ADMINS
+    )
+    def _shopping_lists_callback(self, update: Update, context: CallbackContext) -> None:
+        """
+        Show a list of all shopping lists
+        :param update: the chat update object
+        :param context: telegram context
+        """
+        bot = context.bot
+        chat_id = update.effective_chat.id
+
+        shopping_list_items = self._grocy.shopping_list(True)
+        shopping_list_items = sorted(shopping_list_items, key=lambda x: x.product.name)
+
+        item_texts = list(list(map(self._shopping_list_item_to_str, shopping_list_items)))
+        text = "\n".join([
+            "*=> Shopping List <=*",
+            *item_texts,
+        ]).strip()
+
+        send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
+
+    @staticmethod
+    def _shopping_list_item_to_str(item: ShoppingListProduct) -> str:
+        from pygrocy.utils import parse_int
+        amount = parse_int(item.amount, item.amount)
+
+        return f"{amount}x {item.product.name}"
 
     @command(
         name=COMMAND_STATS,

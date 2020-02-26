@@ -1,0 +1,13 @@
+grocy_telegram_bot:
+  grocy:
+    api_key: abcdefgh12345678
+    host: 127.0.0.1
+    port: 80
+  stats:
+    enabled: true
+    port: 8000
+  telegram:
+    admin_usernames:
+      - myadminuser
+      - myotheradminuser
+    bot_token: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11

@@ -13,4 +13,4 @@ RUN pip install pipenv
 RUN pipenv install --system --deploy
 RUN pip install .
 
-CMD [ "python", "./grocy_telegram/main.py" ]
+CMD [ "python", "./grocy_telegram_bot/main.py" ]

@@ -3,8 +3,6 @@
 **grocy-telegram-bot** is a telegram bot that allows you to receive notifications
 and interact with grocy.
 
-[![asciicast](https://asciinema.org/a/3WbBxMXnZyT1QnuTP9fm37wkS.svg)](https://asciinema.org/a/3WbBxMXnZyT1QnuTP9fm37wkS)
-
 # How it works
 
 **grocy-telegram-bot** is a self contained python application that talks
@@ -17,7 +15,7 @@ to your grocy instance using its REST API.
 Install **grocy-telegram-bot** using pip:
 
 ```shell
-pip3 install grocy-telegram
+pip3 install grocy-telegram-bot
 ```
 
 ## Configuration
@@ -26,7 +24,7 @@ pip3 install grocy-telegram
 to provide configuration via a YAML file as well as ENV variables. Have a look at the 
 [documentation about it](https://github.com/markusressel/container-app-conf).
 
-See [grocy_telegram.yaml](/grocy_telegram.yaml) for an example in this repo.
+See [grocy_telegram_bot.yaml](/grocy_telegram_bot.yaml) for an example in this repo.
 
 ## Docker
 

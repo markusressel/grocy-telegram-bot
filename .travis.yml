@@ -1,0 +1,34 @@
+language: python
+
+python:
+  - "3.6"
+  - "3.7"
+  - "3.8"
+
+install:
+  - pip install --upgrade pip
+  - pip install pipenv
+  - pipenv install --system --deploy
+  - pip install --no-cache-dir .
+
+script:
+  - cd tests
+  - pytest
+  - cd ..
+
+before_deploy:
+  docker build -t markusressel/grocy-telegram-bot .
+
+deploy:
+  - provider: script
+    skip_cleanup: true
+    script: bash travis/docker_push
+    on:
+      branch: master
+      tags: true
+  - provider: script
+    skip_cleanup: true
+    script: bash travis/docker_push_latest
+    on:
+      branch: master
+      tags: false

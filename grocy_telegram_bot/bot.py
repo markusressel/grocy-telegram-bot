@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 
 from pygrocy import Grocy
-from pygrocy.grocy import Chore, ShoppingListProduct
+from pygrocy.grocy import Chore, ShoppingListProduct, Product
 from telegram import Update, ParseMode
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, \
     CallbackContext
@@ -20,6 +20,7 @@ LOGGER.setLevel(logging.DEBUG)
 
 COMMAND_START = "start"
 
+COMMAND_INVENTORY = ["inventory", "i"]
 COMMAND_CHORES = ["chores", "ch"]
 COMMAND_SHOPPING_LIST = ["shopping_list", "sl"]
 
@@ -68,6 +69,9 @@ class GrocyTelegramBot:
             CommandHandler(COMMAND_START,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._start_callback),
+            CommandHandler(COMMAND_INVENTORY,
+                           filters=(~ Filters.reply) & (~ Filters.forwarded),
+                           callback=self._inventory_callback),
             CommandHandler(COMMAND_CHORES,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._chores_callback),
@@ -130,6 +134,38 @@ class GrocyTelegramBot:
 
         send_message(bot, chat_id,
                      f"Welcome {user_first_name},\nthis is your grocy-telegram-bot instance, ready to go!")
+
+    @command(
+        name=COMMAND_INVENTORY,
+        description="List product inventory.",
+        permissions=CONFIG_ADMINS
+    )
+    def _inventory_callback(self, update: Update, context: CallbackContext) -> None:
+        """
+        Show a list of all products in the inventory
+        :param update: the chat update object
+        :param context: telegram context
+        """
+        bot = context.bot
+        chat_id = update.effective_chat.id
+
+        products = self._grocy.stock(True)
+        products = sorted(products, key=lambda x: x.name)
+
+        item_texts = list(list(map(self._product_to_str, products)))
+        text = "\n".join([
+            "*=> Inventory <=*",
+            *item_texts,
+        ]).strip()
+
+        send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
+
+    @staticmethod
+    def _product_to_str(item: Product) -> str:
+        from pygrocy.utils import parse_int
+        amount = parse_int(item.available_amount, item.available_amount)
+
+        return f"{item.name} ({amount}x)"
 
     @command(
         name=COMMAND_CHORES,

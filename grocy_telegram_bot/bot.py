@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pygrocy import Grocy
 from pygrocy.grocy import Chore
@@ -142,12 +142,23 @@ class GrocyTelegramBot:
         chat_id = update.effective_chat.id
 
         chores = self._grocy.chores(True)
-        overdue = filter(lambda x: x.next_estimated_execution_time < datetime.now().astimezone(), chores)
-        item_texts = list(map(self._chore_to_str, overdue))
+        today_utc_date_with_zero_time = datetime.now().astimezone(tz=timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0)
+        overdue = list(filter(lambda x: x.next_estimated_execution_time <= today_utc_date_with_zero_time, chores))
+        other = [item for item in chores if item not in overdue]
+
+        overdue_item_texts = list(map(self._chore_to_str, overdue))
+        other_item_texts = list(map(self._chore_to_str, other))
         text = "\n".join([
-            "**Overdue Chores:**",
+            "*=> Chores <=*",
+            "*Overdue:*",
+            *overdue_item_texts,
             "",
-            *item_texts])
+            "*Other:*",
+            *other_item_texts
+        ])
+
+        text = text.strip()
 
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
 

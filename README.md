@@ -10,7 +10,9 @@ to your grocy instance using its REST API.
 
 # How to use
 
-## Install
+## Manual installation
+
+### Install
 
 Install **grocy-telegram-bot** using pip:
 
@@ -18,13 +20,21 @@ Install **grocy-telegram-bot** using pip:
 pip3 install grocy-telegram-bot
 ```
 
-## Configuration
+### Configuration
 
 **grocy-telegram-bot** uses [container-app-conf](https://github.com/markusressel/container-app-conf)
 to provide configuration via a YAML file as well as ENV variables. Have a look at the 
 [documentation about it](https://github.com/markusressel/container-app-conf).
 
 See [grocy_telegram_bot_example.yaml](/grocy_telegram_bot_example.yaml) for an example in this repo.
+
+### Run
+
+Start the bot by using:
+
+```shell script
+grocy-python-bot
+```
 
 ## Docker
 
@@ -35,6 +45,9 @@ image from DockerHub:
 sudo docker run -t \
     markusressel/grocy-telegram-bot:latest
 ```
+
+Configure the image using either environment variables, or mount the configuration
+file from your host system to `/app/grocy_telegram_bot.yaml`.
 
 # Contributing
 

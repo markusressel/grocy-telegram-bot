@@ -14,7 +14,8 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(le
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.DEBUG)
 
-if __name__ == '__main__':
+
+def main():
     config = Config()
 
     LOGGER.debug("Config:\n{}".format(config.print(TomlFormatter())))
@@ -24,3 +25,7 @@ if __name__ == '__main__':
 
     grocy_telegram_bot = GrocyTelegramBot(config)
     grocy_telegram_bot.start()
+
+
+if __name__ == '__main__':
+    main()

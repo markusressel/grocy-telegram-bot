@@ -77,7 +77,7 @@ setup(
     tests_require=locked_requirements('develop'),
     entry_points={
         'console_scripts': [
-            'grocy-telegram-bot = grocy_telegram_bot.cli:cli'
+            'grocy-telegram-bot = grocy_telegram_bot.main:main'
         ]
     }
 )

@@ -11,6 +11,8 @@ from telegram_click.permission import PRIVATE_CHAT
 from telegram_click.permission.base import Permission
 
 from grocy_telegram_bot.config import Config
+from grocy_telegram_bot.monitoring.monitor import Monitor
+from grocy_telegram_bot.notifier import Notifier
 from grocy_telegram_bot.stats import format_metrics, START_TIME
 from grocy_telegram_bot.util import send_message, datetime_fmt_date_only
 
@@ -60,6 +62,9 @@ class GrocyTelegramBot:
             api_key=config.GROCY_API_KEY.value,
             port=config.GROCY_PORT.value)
 
+        self._notifier = Notifier(self._config, self._updater)
+        self._monitor = Monitor(self._notifier, self._grocy)
+
         self._updater = Updater(token=self._config.TELEGRAM_BOT_TOKEN.value, use_context=True)
         LOGGER.debug("Using bot id '{}' ({})".format(self._updater.bot.id, self._updater.bot.name))
 
@@ -107,6 +112,7 @@ class GrocyTelegramBot:
         """
         Starts up the bot.
         """
+        self._monitor.start()
         self._updater.start_polling()
         self._updater.idle()
 
@@ -114,6 +120,7 @@ class GrocyTelegramBot:
         """
         Shuts down the bot.
         """
+        self._monitor.stop()
         self._updater.stop()
 
     @START_TIME.time()

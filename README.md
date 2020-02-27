@@ -1,12 +1,13 @@
 # grocy-telegram-bot [![Build Status](https://travis-ci.com/markusressel/grocy-telegram-bot.svg?branch=master)](https://travis-ci.com/markusressel/grocy-telegram-bot) [![PyPI version](https://badge.fury.io/py/grocy-telegram-bot.svg)](https://badge.fury.io/py/grocy-telegram-bot)
 
 **grocy-telegram-bot** is a telegram bot that allows you to receive notifications
-and interact with grocy.
+and interact with [Grocy](https://github.com/grocy/grocy).
 
 # How it works
 
 **grocy-telegram-bot** is a self contained python application that talks
-to your grocy instance using its REST API.
+to your [Grocy](https://github.com/grocy/grocy) instance via its REST API 
+for which [pygrocy](https://github.com/sebrut/pygrocy) is used.
 
 # How to use
 

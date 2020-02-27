@@ -3,6 +3,7 @@ from container_app_conf.entry.bool import BoolConfigEntry
 from container_app_conf.entry.int import IntConfigEntry
 from container_app_conf.entry.list import ListConfigEntry
 from container_app_conf.entry.string import StringConfigEntry
+from container_app_conf.entry.timedelta import TimeDeltaConfigEntry
 from container_app_conf.source.env_source import EnvSource
 from container_app_conf.source.toml_source import TomlSource
 from container_app_conf.source.yaml_source import YamlSource
@@ -10,6 +11,7 @@ from py_range_parse import Range
 
 NODE_MAIN = "grocy_telegram_bot"
 
+NODE_NOTIFICATION = "notification"
 NODE_TELEGRAM = "telegram"
 
 NODE_GROCY = "grocy"
@@ -64,6 +66,26 @@ class Config(ConfigBase):
             "myadminuser",
             "myotheradminuser"
         ]
+    )
+
+    GROCY_MONITORING_INTERVAL = TimeDeltaConfigEntry(
+        key_path=[
+            NODE_MAIN,
+            NODE_GROCY,
+            "monitoring_interval"
+        ],
+        required=True,
+        default="60s"
+    )
+
+    NOTIFICATION_CHAT_IDS = ListConfigEntry(
+        item_type=StringConfigEntry,
+        key_path=[
+            NODE_MAIN,
+            NODE_NOTIFICATION,
+            "chat_ids"
+        ],
+        default=[]
     )
 
     GROCY_HOST = StringConfigEntry(

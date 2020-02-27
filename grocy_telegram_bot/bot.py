@@ -1,24 +1,27 @@
 import logging
-from datetime import datetime, timezone
 
 from pygrocy import Grocy
-from pygrocy.grocy import Chore, ShoppingListProduct, Product
+from pygrocy.grocy import ShoppingListProduct
 from telegram import Update, ParseMode
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, \
     CallbackContext
+from telegram_click.argument import Argument
 from telegram_click.decorator import command
 from telegram_click.permission import PRIVATE_CHAT
 from telegram_click.permission.base import Permission
 
 from grocy_telegram_bot.config import Config
+from grocy_telegram_bot.monitoring.monitor import Monitor
+from grocy_telegram_bot.notifier import Notifier
 from grocy_telegram_bot.stats import format_metrics, START_TIME
-from grocy_telegram_bot.util import send_message, datetime_fmt_date_only
+from grocy_telegram_bot.util import send_message, filter_overdue_chores, product_to_str, chore_to_str
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.DEBUG)
 
 COMMAND_START = "start"
+COMMAND_CHAT_ID = "chat_id"
 
 COMMAND_INVENTORY = ["inventory", "i"]
 COMMAND_CHORES = ["chores", "ch"]
@@ -69,9 +72,13 @@ class GrocyTelegramBot:
             CommandHandler(COMMAND_START,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._start_callback),
+            CommandHandler(COMMAND_CHAT_ID,
+                           filters=(~ Filters.reply) & (~ Filters.forwarded),
+                           callback=self._chat_id_callback),
             CommandHandler(COMMAND_INVENTORY,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._inventory_callback),
+
             CommandHandler(COMMAND_CHORES,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._chores_callback),
@@ -99,6 +106,13 @@ class GrocyTelegramBot:
         for handler in handlers:
             self._updater.dispatcher.add_handler(handler)
 
+        self._monitor = None
+        chat_ids = self._config.NOTIFICATION_CHAT_IDS.value
+        if chat_ids is not None and len(chat_ids) > 0:
+            self._notifier = Notifier(self._updater, chat_ids)
+            interval = self._config.GROCY_MONITORING_INTERVAL.value
+            self._monitor = Monitor(interval, self._notifier, self._grocy)
+
     @property
     def bot(self):
         return self._updater.bot
@@ -106,8 +120,9 @@ class GrocyTelegramBot:
     def start(self):
         """
         Starts up the bot.
-        This means filling the url pool and listening for messages.
         """
+        if self._monitor is not None:
+            self._monitor.start()
         self._updater.start_polling()
         self._updater.idle()
 
@@ -115,6 +130,8 @@ class GrocyTelegramBot:
         """
         Shuts down the bot.
         """
+        if self._monitor is not None:
+            self._monitor.stop()
         self._updater.stop()
 
     @START_TIME.time()
@@ -136,6 +153,21 @@ class GrocyTelegramBot:
                      f"Welcome {user_first_name},\nthis is your grocy-telegram-bot instance, ready to go!")
 
     @command(
+        name=COMMAND_CHAT_ID,
+        description="Show current chat id.",
+        permissions=CONFIG_ADMINS
+    )
+    def _chat_id_callback(self, update: Update, context: CallbackContext) -> None:
+        """
+        Print the current chat id, to make it easier to add it to notifications
+        :param update: the chat update object
+        :param context: telegram context
+        """
+        bot = context.bot
+        chat_id = update.effective_chat.id
+        send_message(bot, chat_id, f"{chat_id}", parse_mode=ParseMode.MARKDOWN)
+
+    @command(
         name=COMMAND_INVENTORY,
         description="List product inventory.",
         permissions=CONFIG_ADMINS
@@ -150,9 +182,9 @@ class GrocyTelegramBot:
         chat_id = update.effective_chat.id
 
         products = self._grocy.stock(True)
-        products = sorted(products, key=lambda x: x.name)
+        products = sorted(products, key=lambda x: x.name.lower())
 
-        item_texts = list(list(map(self._product_to_str, products)))
+        item_texts = list(list(map(product_to_str, products)))
         text = "\n".join([
             "*=> Inventory <=*",
             *item_texts,
@@ -160,19 +192,22 @@ class GrocyTelegramBot:
 
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
 
-    @staticmethod
-    def _product_to_str(item: Product) -> str:
-        from pygrocy.utils import parse_int
-        amount = parse_int(item.available_amount, item.available_amount)
-
-        return f"{item.name} ({amount}x)"
-
     @command(
         name=COMMAND_CHORES,
-        description="List chores.",
+        description="List overdue chores.",
+        arguments=[
+            Argument(
+                name=["all", "a"],
+                description="Show all chores",
+                type=bool,
+                example="1",
+                optional=True,
+                default=False
+            )
+        ],
         permissions=CONFIG_ADMINS
     )
-    def _chores_callback(self, update: Update, context: CallbackContext) -> None:
+    def _chores_callback(self, update: Update, context: CallbackContext, all: bool) -> None:
         """
         Show a list of all chores
         :param update: the chat update object
@@ -184,40 +219,31 @@ class GrocyTelegramBot:
         chores = self._grocy.chores(True)
         chores = sorted(chores, key=lambda x: x.next_estimated_execution_time)
 
-        today_utc_date_with_zero_time = datetime.now().astimezone(tz=timezone.utc).replace(
-            hour=0, minute=0, second=0, microsecond=0)
+        overdue_chores = filter_overdue_chores(chores)
+        other = [item for item in chores if item not in overdue_chores]
 
-        overdue = list(filter(lambda x: x.next_estimated_execution_time <= today_utc_date_with_zero_time, chores))
-        other = [item for item in chores if item not in overdue]
+        overdue_item_texts = list(map(chore_to_str, overdue_chores))
+        other_item_texts = list(map(chore_to_str, other))
 
-        overdue_item_texts = list(map(self._chore_to_str, overdue))
-        other_item_texts = list(map(self._chore_to_str, other))
-        text = "\n".join([
+        lines = [
             "*=> Chores <=*",
-            "*Overdue:*",
-            *overdue_item_texts,
-            "",
-            "*Other:*",
-            *other_item_texts
-        ]).strip()
+        ]
 
+        if all and len(other_item_texts) > 0:
+            lines.extend([
+                "",
+                *other_item_texts
+            ])
+
+        if len(overdue_item_texts) > 0:
+            lines.extend([
+                "",
+                "*Overdue:*",
+                *overdue_item_texts
+            ])
+
+        text = "\n".join(lines).strip()
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
-
-    def _chore_to_str(self, chore: Chore) -> str:
-        """
-        Converts a chore object into a string representation suitable for a telegram chat
-        :param chore: the chore item
-        :return: a text representation
-        """
-        today_utc_date_with_zero_time = datetime.now().astimezone(tz=timezone.utc).replace(
-            hour=0, minute=0, second=0, microsecond=0)
-        days_off = (chore.next_estimated_execution_time - today_utc_date_with_zero_time).days
-        date_str = datetime_fmt_date_only(chore.next_estimated_execution_time, self._config.LOCALE.value)
-
-        return "\n".join([
-            chore.name,
-            f"  Due: {days_off} days ({date_str})"
-        ])
 
     @command(
         name=COMMAND_SHOPPING_LIST,

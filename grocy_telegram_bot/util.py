@@ -100,10 +100,10 @@ def _format_caption(text: str) -> str or None:
     return text
 
 
-def datetime_fmt_date_only(d: datetime, locale: str):
-    time = d.astimezone()
+def datetime_fmt_date_only(d: datetime):
     from babel.dates import format_date
-    return format_date(time.date(), locale=locale)
+    time = d.astimezone()
+    return format_date(time.date(), locale=CONFIG.LOCALE.value)
 
 
 def send_message(bot: Bot, chat_id: str, message: str, parse_mode: str = None, reply_to: int = None):
@@ -122,7 +122,13 @@ def send_message(bot: Bot, chat_id: str, message: str, parse_mode: str = None, r
 def product_to_str(item: Product) -> str:
     from pygrocy.utils import parse_int
     amount = parse_int(item.available_amount, item.available_amount)
-    return f"{item.name} ({amount}x)"
+
+    text = f"{amount}x\t{item.name}"
+    if item.best_before_date < datetime(year=2999, month=12, day=31).astimezone(tz=timezone.utc):
+        expire_date = datetime_fmt_date_only(item.best_before_date)
+        text += f" (Exp: {expire_date})"
+
+    return text
 
 
 def chore_to_str(chore: Chore) -> str:
@@ -134,7 +140,7 @@ def chore_to_str(chore: Chore) -> str:
     today_utc_date_with_zero_time = datetime.now().astimezone(tz=timezone.utc).replace(
         hour=0, minute=0, second=0, microsecond=0)
     days_off = abs((chore.next_estimated_execution_time - today_utc_date_with_zero_time).days)
-    date_str = datetime_fmt_date_only(chore.next_estimated_execution_time, CONFIG.LOCALE.value)
+    date_str = datetime_fmt_date_only(chore.next_estimated_execution_time)
 
     return "\n".join([
         chore.name,

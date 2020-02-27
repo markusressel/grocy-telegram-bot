@@ -182,7 +182,7 @@ class GrocyTelegramBot:
         chat_id = update.effective_chat.id
 
         products = self._grocy.stock(True)
-        products = sorted(products, key=lambda x: x.name)
+        products = sorted(products, key=lambda x: x.name.lower())
 
         item_texts = list(list(map(product_to_str, products)))
         text = "\n".join([

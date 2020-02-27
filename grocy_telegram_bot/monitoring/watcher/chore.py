@@ -7,7 +7,7 @@ from grocy_telegram_bot.monitoring.watcher import GrocyEntityWatcher
 from grocy_telegram_bot.util import filter_overdue_chores
 
 
-class ChoreWatcher(GrocyEntityWatcher):
+class OverdueChoreWatcher(GrocyEntityWatcher):
 
     def __init__(self, grocy: Grocy, on_change_listener, interval: float):
         super().__init__(grocy, on_change_listener, interval)

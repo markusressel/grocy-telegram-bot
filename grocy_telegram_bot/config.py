@@ -68,7 +68,7 @@ class Config(ConfigBase):
         ]
     )
 
-    GROCY_MONITOR_INTERVAL = TimeDeltaConfigEntry(
+    GROCY_MONITORING_INTERVAL = TimeDeltaConfigEntry(
         key_path=[
             NODE_MAIN,
             NODE_GROCY,

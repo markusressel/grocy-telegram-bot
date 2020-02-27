@@ -105,7 +105,7 @@ class GrocyTelegramBot:
         chat_ids = self._config.NOTIFICATION_CHAT_IDS.value
         if chat_ids is not None and len(chat_ids) > 0:
             self._notifier = Notifier(self._updater, chat_ids)
-            interval = self._config.GROCY_MONITOR_INTERVAL.value
+            interval = self._config.GROCY_MONITORING_INTERVAL.value
             self._monitor = Monitor(interval, self._notifier, self._grocy)
 
     @property

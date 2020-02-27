@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import List
 
 from pygrocy import Grocy
@@ -12,14 +13,16 @@ from grocy_telegram_bot.util import product_to_str, chore_to_str
 
 class Monitor:
 
-    def __init__(self, notifier: Notifier, grocy: Grocy):
+    def __init__(self, interval: timedelta, notifier: Notifier, grocy: Grocy):
         self._notifier = notifier
         self._grocy = grocy
 
+        interval_seconds = interval.total_seconds()
+
         self.watchers = [
-            ChoreWatcher(self._grocy, self.on_chore_changed, 5),
-            ExpiredProductsWatcher(self._grocy, self.on_expired_changed, 5),
-            ExpiringProductsWatcher(self._grocy, self.on_expiring_changed, 5)
+            ChoreWatcher(self._grocy, self.on_chore_changed, interval_seconds),
+            ExpiredProductsWatcher(self._grocy, self.on_expired_changed, interval_seconds),
+            ExpiringProductsWatcher(self._grocy, self.on_expiring_changed, interval_seconds)
         ]
 
     def start(self):

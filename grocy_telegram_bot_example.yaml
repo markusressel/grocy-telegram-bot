@@ -4,6 +4,7 @@ grocy_telegram_bot:
     api_key: abcdefgh12345678
     host: 127.0.0.1
     port: 80
+    monitor_interval: 60s
   stats:
     enabled: true
     port: 8000

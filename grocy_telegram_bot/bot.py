@@ -21,6 +21,7 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.DEBUG)
 
 COMMAND_START = "start"
+COMMAND_CHAT_ID = "chat_id"
 
 COMMAND_INVENTORY = ["inventory", "i"]
 COMMAND_CHORES = ["chores", "ch"]
@@ -71,9 +72,13 @@ class GrocyTelegramBot:
             CommandHandler(COMMAND_START,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._start_callback),
+            CommandHandler(COMMAND_CHAT_ID,
+                           filters=(~ Filters.reply) & (~ Filters.forwarded),
+                           callback=self._chat_id_callback),
             CommandHandler(COMMAND_INVENTORY,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._inventory_callback),
+
             CommandHandler(COMMAND_CHORES,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._chores_callback),
@@ -146,6 +151,21 @@ class GrocyTelegramBot:
 
         send_message(bot, chat_id,
                      f"Welcome {user_first_name},\nthis is your grocy-telegram-bot instance, ready to go!")
+
+    @command(
+        name=COMMAND_CHAT_ID,
+        description="Show current chat id.",
+        permissions=CONFIG_ADMINS
+    )
+    def _chat_id_callback(self, update: Update, context: CallbackContext) -> None:
+        """
+        Print the current chat id, to make it easier to add it to notifications
+        :param update: the chat update object
+        :param context: telegram context
+        """
+        bot = context.bot
+        chat_id = update.effective_chat.id
+        send_message(bot, chat_id, f"{chat_id}", parse_mode=ParseMode.MARKDOWN)
 
     @command(
         name=COMMAND_INVENTORY,

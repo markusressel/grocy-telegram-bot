@@ -203,16 +203,20 @@ class GrocyTelegramBot:
 
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
 
-    @staticmethod
-    def _chore_to_str(chore: Chore) -> str:
+    def _chore_to_str(self, chore: Chore) -> str:
         """
         Converts a chore object into a string representation suitable for a telegram chat
         :param chore: the chore item
         :return: a text representation
         """
+        today_utc_date_with_zero_time = datetime.now().astimezone(tz=timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0)
+        days_off = (chore.next_estimated_execution_time - today_utc_date_with_zero_time).days
+        date_str = datetime_fmt_date_only(chore.next_estimated_execution_time, self._config.LOCALE.value)
+
         return "\n".join([
             chore.name,
-            "  Due: " + datetime_fmt_date_only(chore.next_estimated_execution_time)
+            f"  Due: {days_off} days ({date_str})"
         ])
 
     @command(

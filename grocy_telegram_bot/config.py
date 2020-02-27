@@ -33,6 +33,15 @@ class Config(ConfigBase):
         ]
         return super(Config, cls).__new__(cls, data_sources=data_sources)
 
+    LOCALE = StringConfigEntry(
+        description="Bot Locale",
+        key_path=[
+            NODE_MAIN,
+            "locale"
+        ],
+        default="en",
+    )
+
     TELEGRAM_BOT_TOKEN = StringConfigEntry(
         description="The telegram bot token to use",
         key_path=[

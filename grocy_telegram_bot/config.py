@@ -10,6 +10,7 @@ from py_range_parse import Range
 
 NODE_MAIN = "grocy_telegram_bot"
 
+NODE_NOTIFICATION = "notification"
 NODE_TELEGRAM = "telegram"
 
 NODE_GROCY = "grocy"
@@ -64,6 +65,16 @@ class Config(ConfigBase):
             "myadminuser",
             "myotheradminuser"
         ]
+    )
+
+    NOTIFICATION_CHAT_IDS = ListConfigEntry(
+        item_type=StringConfigEntry,
+        key_path=[
+            NODE_MAIN,
+            NODE_NOTIFICATION,
+            "chat_ids"
+        ],
+        default=[]
     )
 
     GROCY_HOST = StringConfigEntry(

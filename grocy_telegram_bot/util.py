@@ -1,16 +1,21 @@
 import hashlib
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from io import BytesIO
+from typing import List
 
 from emoji import emojize
+from pygrocy.grocy import Chore, Product
 from telegram import Bot
 
+from grocy_telegram_bot.config import Config
 from grocy_telegram_bot.const import TELEGRAM_CAPTION_LENGTH_LIMIT
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.DEBUG)
+
+CONFIG = Config()
 
 
 # def download_image_bytes(url: str) -> bytes:
@@ -112,3 +117,33 @@ def send_message(bot: Bot, chat_id: str, message: str, parse_mode: str = None, r
     """
     emojized_text = emojize(message, use_aliases=True)
     bot.send_message(chat_id=chat_id, parse_mode=parse_mode, text=emojized_text, reply_to_message_id=reply_to)
+
+
+def product_to_str(item: Product) -> str:
+    from pygrocy.utils import parse_int
+    amount = parse_int(item.available_amount, item.available_amount)
+    return f"{item.name} ({amount}x)"
+
+
+def chore_to_str(chore: Chore) -> str:
+    """
+    Converts a chore object into a string representation suitable for a telegram chat
+    :param chore: the chore item
+    :return: a text representation
+    """
+    today_utc_date_with_zero_time = datetime.now().astimezone(tz=timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0)
+    days_off = abs((chore.next_estimated_execution_time - today_utc_date_with_zero_time).days)
+    date_str = datetime_fmt_date_only(chore.next_estimated_execution_time, CONFIG.LOCALE.value)
+
+    return "\n".join([
+        chore.name,
+        f"  Due: {days_off} days ({date_str})"
+    ])
+
+
+def filter_overdue_chores(chores: List[Chore]) -> List[Chore]:
+    today_utc_date_with_zero_time = datetime.now().astimezone(tz=timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0)
+
+    return list(filter(lambda x: x.next_estimated_execution_time <= today_utc_date_with_zero_time, chores))

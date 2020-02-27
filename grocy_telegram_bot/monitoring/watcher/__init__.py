@@ -23,7 +23,7 @@ class RegularIntervalWorker:
         """
         if self._timer is None:
             LOGGER.debug(f"Starting worker: {self.__class__.__name__}")
-            self._schedule_next_run()
+            self._schedule_next_run(0)
         else:
             LOGGER.debug("Already running, ignoring start() call")
 
@@ -35,13 +35,14 @@ class RegularIntervalWorker:
             self._timer.cancel()
         self._timer = None
 
-    def _schedule_next_run(self):
+    def _schedule_next_run(self, interval: int = None):
         """
         Schedules the next run
         """
         if self._timer is not None:
             self._timer.cancel()
-        self._timer = threading.Timer(self._interval, self._worker_job)
+        interval = interval if interval is not None else self._interval
+        self._timer = threading.Timer(interval, self._worker_job)
         self._timer.start()
 
     def _worker_job(self):
@@ -76,15 +77,29 @@ class GrocyEntityWatcher(RegularIntervalWorker):
         """
         raise NotImplementedError()
 
-    def _has_changed(self, old, new) -> bool:
+    def _get_id_set(self, items: List):
+        if items is None or len(items) <= 0:
+            return set()
+
+        id_attr = None
+        for candidate in ["id", "product_id", "chore_id"]:
+            if hasattr(items[0], candidate):
+                id_attr = candidate
+                break
+
+        if id_attr is None:
+            raise ValueError("Couldn't extract id key")
+
+        return set(map(lambda x: getattr(x, id_attr), items))
+
+    def _has_changed(self, old: List, new: List) -> bool:
         """
         Compare the known and the new data and check if something has changed
         :param old: the old state
         :param new: the new state
         :return: True if changed, False otherwise
         """
-        # TODO compare new and old data, probably by item id
-        return new != old
+        return self._get_id_set(old) != self._get_id_set(new)
 
     def _run(self):
         data = self._fetch_data()
@@ -94,6 +109,8 @@ class GrocyEntityWatcher(RegularIntervalWorker):
             self.data = data
             return
 
-        if self._has_changed(self.data, data):
-            self.on_change_listener(self.data, data)
-        self.data = data
+        try:
+            if self._has_changed(self.data, data):
+                self.on_change_listener(self.data, data)
+        finally:
+            self.data = data

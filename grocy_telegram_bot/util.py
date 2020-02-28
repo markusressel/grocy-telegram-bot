@@ -6,7 +6,7 @@ from io import BytesIO
 from typing import List
 
 from emoji import emojize
-from pygrocy.grocy import Chore, Product
+from pygrocy.grocy import Chore, Product, ShoppingListProduct
 from telegram import Bot
 
 from grocy_telegram_bot.config import Config
@@ -133,7 +133,7 @@ def product_to_str(item: Product) -> str:
 
 def chore_to_str(chore: Chore) -> str:
     """
-    Converts a chore object into a string representation suitable for a telegram chat
+    Converts a chore object into a string representation
     :param chore: the chore item
     :return: a text representation
     """
@@ -145,6 +145,18 @@ def chore_to_str(chore: Chore) -> str:
         chore.name,
         f"  Due: {days_off} days ({date_str})"
     ])
+
+
+def shopping_list_item_to_str(item: ShoppingListProduct) -> str:
+    """
+    Converts a shopping list item object into a string representation
+    :param item: the shopping list item
+    :return: a text representation
+    """
+    from pygrocy.utils import parse_int
+    amount = parse_int(item.amount, item.amount)
+
+    return f"{amount}x {item.product.name}"
 
 
 def filter_overdue_chores(chores: List[Chore]) -> List[Chore]:

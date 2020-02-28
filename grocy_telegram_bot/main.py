@@ -3,6 +3,7 @@ import os
 import sys
 
 from container_app_conf.formatter.toml import TomlFormatter
+from prometheus_client import start_http_server
 
 from grocy_telegram_bot.bot import GrocyTelegramBot
 from grocy_telegram_bot.config import Config
@@ -21,7 +22,8 @@ def main():
     LOGGER.debug("Config:\n{}".format(config.print(TomlFormatter())))
 
     # start prometheus server
-    # start_http_server(config.STATS_PORT.value)
+    if config.STATS_ENABLED.value:
+        start_http_server(config.STATS_PORT.value)
 
     grocy_telegram_bot = GrocyTelegramBot(config)
     grocy_telegram_bot.start()

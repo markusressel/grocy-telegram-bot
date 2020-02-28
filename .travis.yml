@@ -26,9 +26,11 @@ deploy:
     on:
       branch: master
       tags: true
+      python: 3.8
   - provider: script
     skip_cleanup: true
     script: bash travis/docker_push_latest
     on:
       branch: master
       tags: false
+      python: 3.8

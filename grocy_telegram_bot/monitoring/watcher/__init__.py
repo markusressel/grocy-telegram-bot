@@ -65,10 +65,10 @@ class RegularIntervalWorker:
 
 class GrocyEntityWatcher(RegularIntervalWorker):
 
-    def __init__(self, grocy: Grocy, on_change_listener, interval: float):
+    def __init__(self, grocy: Grocy, on_update_listener, interval: float):
         super().__init__(interval)
         self.grocy = grocy
-        self.on_change_listener = on_change_listener
+        self.on_update_listener = on_update_listener
         self.data = None
 
     def _fetch_data(self) -> List:
@@ -77,40 +77,10 @@ class GrocyEntityWatcher(RegularIntervalWorker):
         """
         raise NotImplementedError()
 
-    def _get_id_set(self, items: List):
-        if items is None or len(items) <= 0:
-            return set()
-
-        id_attr = None
-        for candidate in ["id", "product_id", "chore_id"]:
-            if hasattr(items[0], candidate):
-                id_attr = candidate
-                break
-
-        if id_attr is None:
-            raise ValueError("Couldn't extract id key")
-
-        return set(map(lambda x: getattr(x, id_attr), items))
-
-    def _has_changed(self, old: List, new: List) -> bool:
-        """
-        Compare the known and the new data and check if something has changed
-        :param old: the old state
-        :param new: the new state
-        :return: True if changed, False otherwise
-        """
-        return self._get_id_set(old) != self._get_id_set(new)
-
     def _run(self):
         data = self._fetch_data()
 
-        # if no data to compare to exists, just store the data for now
-        if self.data is None:
-            self.data = data
-            return
-
         try:
-            if self._has_changed(self.data, data):
-                self.on_change_listener(self.data, data)
+            self.on_update_listener(self.data, data)
         finally:
             self.data = data

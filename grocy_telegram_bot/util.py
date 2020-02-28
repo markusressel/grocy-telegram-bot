@@ -1,12 +1,12 @@
 import hashlib
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from io import BytesIO
 from typing import List
 
 from emoji import emojize
-from pygrocy.grocy import Chore, Product
+from pygrocy.grocy import Chore, Product, ShoppingListProduct
 from telegram import Bot
 
 from grocy_telegram_bot.config import Config
@@ -133,12 +133,11 @@ def product_to_str(item: Product) -> str:
 
 def chore_to_str(chore: Chore) -> str:
     """
-    Converts a chore object into a string representation suitable for a telegram chat
+    Converts a chore object into a string representation
     :param chore: the chore item
     :return: a text representation
     """
-    today_utc_date_with_zero_time = datetime.now().astimezone(tz=timezone.utc).replace(
-        hour=0, minute=0, second=0, microsecond=0)
+    today_utc_date_with_zero_time = datetime.today().astimezone(tz=timezone.utc)
     days_off = abs((chore.next_estimated_execution_time - today_utc_date_with_zero_time).days)
     date_str = datetime_fmt_date_only(chore.next_estimated_execution_time)
 
@@ -148,8 +147,35 @@ def chore_to_str(chore: Chore) -> str:
     ])
 
 
-def filter_overdue_chores(chores: List[Chore]) -> List[Chore]:
-    today_utc_date_with_zero_time = datetime.now().astimezone(tz=timezone.utc).replace(
-        hour=0, minute=0, second=0, microsecond=0)
+def shopping_list_item_to_str(item: ShoppingListProduct) -> str:
+    """
+    Converts a shopping list item object into a string representation
+    :param item: the shopping list item
+    :return: a text representation
+    """
+    from pygrocy.utils import parse_int
+    amount = parse_int(item.amount, item.amount)
 
+    return f"{amount}x {item.product.name}"
+
+
+def filter_overdue_chores(chores: List[Chore]) -> List[Chore]:
+    today_utc_date_with_zero_time = datetime.today().astimezone(tz=timezone.utc)
     return list(filter(lambda x: x.next_estimated_execution_time <= today_utc_date_with_zero_time, chores))
+
+
+def filter_has_expiry_products(products: List[Product]):
+    never_expires_date = datetime(year=2999, month=12, day=31).astimezone(tz=timezone.utc)
+    return list(filter(lambda x: x.best_before_date < never_expires_date, products))
+
+
+def filter_expiring_products(products: List[Product], days_to_expiry: int = 5):
+    today_minus_expiry_timeframe = datetime.today().astimezone(tz=timezone.utc) - timedelta(days=days_to_expiry)
+    products_with_expiry = filter_has_expiry_products(products)
+    return list(filter(lambda x: x.best_before_date < today_minus_expiry_timeframe, products_with_expiry))
+
+
+def filter_expired_products(products: List[Product]):
+    date_today = datetime.today().astimezone(tz=timezone.utc)
+    products_with_expiry = filter_has_expiry_products(products)
+    return list(filter(lambda x: x.best_before_date < date_today, products_with_expiry))

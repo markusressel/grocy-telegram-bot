@@ -1,7 +1,6 @@
 import logging
 
 from pygrocy import Grocy
-from pygrocy.grocy import ShoppingListProduct
 from telegram import Update, ParseMode
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, \
     CallbackContext
@@ -11,27 +10,17 @@ from telegram_click.permission import PRIVATE_CHAT
 from telegram_click.permission.base import Permission
 
 from grocy_telegram_bot.config import Config
+from grocy_telegram_bot.const import *
 from grocy_telegram_bot.monitoring.monitor import Monitor
 from grocy_telegram_bot.notifier import Notifier
-from grocy_telegram_bot.stats import format_metrics, START_TIME
-from grocy_telegram_bot.util import send_message, filter_overdue_chores, product_to_str, chore_to_str
+from grocy_telegram_bot.stats import format_metrics, COMMAND_TIME_START, COMMAND_TIME_INVENTORY, COMMAND_TIME_CHORES, \
+    COMMAND_TIME_SHOPPING_LIST
+from grocy_telegram_bot.util import send_message, filter_overdue_chores, product_to_str, chore_to_str, \
+    shopping_list_item_to_str
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.DEBUG)
-
-COMMAND_START = "start"
-COMMAND_CHAT_ID = "chat_id"
-
-COMMAND_INVENTORY = ["inventory", "i"]
-COMMAND_CHORES = ["chores", "ch"]
-COMMAND_SHOPPING_LIST = ["shopping_list", "sl"]
-
-COMMAND_STATS = 'stats'
-
-COMMAND_COMMANDS = ['help', 'h']
-COMMAND_VERSION = ['version', 'v']
-COMMAND_CONFIG = ['config', 'c']
 
 
 class _ConfigAdmins(Permission):
@@ -59,7 +48,7 @@ class GrocyTelegramBot:
         """
         self._config = config
         self._grocy = Grocy(
-            base_url=f"http://{config.GROCY_HOST.value}",
+            base_url=f"{config.GROCY_HOST.value}",
             api_key=config.GROCY_API_KEY.value,
             port=config.GROCY_PORT.value)
 
@@ -134,7 +123,7 @@ class GrocyTelegramBot:
             self._monitor.stop()
         self._updater.stop()
 
-    @START_TIME.time()
+    @COMMAND_TIME_START.time()
     def _start_callback(self, update: Update, context: CallbackContext) -> None:
         """
         Welcomes a new user with a greeting message
@@ -168,31 +157,6 @@ class GrocyTelegramBot:
         send_message(bot, chat_id, f"{chat_id}", parse_mode=ParseMode.MARKDOWN)
 
     @command(
-        name=COMMAND_INVENTORY,
-        description="List product inventory.",
-        permissions=CONFIG_ADMINS
-    )
-    def _inventory_callback(self, update: Update, context: CallbackContext) -> None:
-        """
-        Show a list of all products in the inventory
-        :param update: the chat update object
-        :param context: telegram context
-        """
-        bot = context.bot
-        chat_id = update.effective_chat.id
-
-        products = self._grocy.stock(True)
-        products = sorted(products, key=lambda x: x.name.lower())
-
-        item_texts = list(list(map(product_to_str, products)))
-        text = "\n".join([
-            "*=> Inventory <=*",
-            *item_texts,
-        ]).strip()
-
-        send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
-
-    @command(
         name=COMMAND_CHORES,
         description="List overdue chores.",
         arguments=[
@@ -207,6 +171,7 @@ class GrocyTelegramBot:
         ],
         permissions=CONFIG_ADMINS
     )
+    @COMMAND_TIME_CHORES.time()
     def _chores_callback(self, update: Update, context: CallbackContext, all: bool) -> None:
         """
         Show a list of all chores
@@ -225,10 +190,7 @@ class GrocyTelegramBot:
         overdue_item_texts = list(map(chore_to_str, overdue_chores))
         other_item_texts = list(map(chore_to_str, other))
 
-        lines = [
-            "*=> Chores <=*",
-        ]
-
+        lines = ["*=> Chores <=*"]
         if all and len(other_item_texts) > 0:
             lines.extend([
                 "",
@@ -246,11 +208,72 @@ class GrocyTelegramBot:
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
 
     @command(
-        name=COMMAND_SHOPPING_LIST,
-        description="List shopping lists.",
+        name=COMMAND_INVENTORY,
+        description="List product inventory.",
+        arguments=[
+            Argument(
+                name=["missing", "m"],
+                description="Show missing products",
+                type=bool,
+                example="1",
+                optional=True,
+                default=False
+            ),
+        ],
         permissions=CONFIG_ADMINS
     )
-    def _shopping_lists_callback(self, update: Update, context: CallbackContext) -> None:
+    @COMMAND_TIME_INVENTORY.time()
+    def _inventory_callback(self, update: Update, context: CallbackContext, missing: bool) -> None:
+        """
+        Show a list of all products in the inventory
+        :param update: the chat update object
+        :param context: telegram context
+        """
+        bot = context.bot
+        chat_id = update.effective_chat.id
+
+        # if missing:
+        #     # TODO: bugged in pygrocy
+        #     products = self._grocy.missing_products(True)
+        # else:
+        products = self._grocy.stock(True)
+
+        products = sorted(products, key=lambda x: x.name.lower())
+
+        item_texts = list(list(map(product_to_str, products)))
+        text = "\n".join([
+            "*=> Inventory <=*",
+            *item_texts,
+        ]).strip()
+
+        send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
+
+    @command(
+        name=COMMAND_SHOPPING_LIST,
+        description="List shopping lists.",
+        arguments=[
+            Argument(
+                name=["id"],
+                description="Shopping list id",
+                type=int,
+                example="1",
+                optional=True,
+                default=1
+            ),
+            Argument(
+                name=["add_missing", "a"],
+                description="Add items below minimum stock to the shopping list",
+                type=bool,
+                example="1",
+                optional=True,
+                default=False
+            )
+        ],
+        permissions=CONFIG_ADMINS
+    )
+    @COMMAND_TIME_SHOPPING_LIST.time()
+    def _shopping_lists_callback(self, update: Update, context: CallbackContext, id: int,
+                                 add_missing: bool or None) -> None:
         """
         Show a list of all shopping lists
         :param update: the chat update object
@@ -259,23 +282,20 @@ class GrocyTelegramBot:
         bot = context.bot
         chat_id = update.effective_chat.id
 
+        if add_missing:
+            self._grocy.add_missing_product_to_shopping_list(shopping_list_id=id)
+
+        # TODO: when supported, pass shopping list id here
         shopping_list_items = self._grocy.shopping_list(True)
         shopping_list_items = sorted(shopping_list_items, key=lambda x: x.product.name)
 
-        item_texts = list(list(map(self._shopping_list_item_to_str, shopping_list_items)))
+        item_texts = list(list(map(shopping_list_item_to_str, shopping_list_items)))
         text = "\n".join([
             "*=> Shopping List <=*",
             *item_texts,
         ]).strip()
 
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
-
-    @staticmethod
-    def _shopping_list_item_to_str(item: ShoppingListProduct) -> str:
-        from pygrocy.utils import parse_int
-        amount = parse_int(item.amount, item.amount)
-
-        return f"{amount}x {item.product.name}"
 
     @command(
         name=COMMAND_STATS,

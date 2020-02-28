@@ -11,27 +11,16 @@ from telegram_click.permission import PRIVATE_CHAT
 from telegram_click.permission.base import Permission
 
 from grocy_telegram_bot.config import Config
+from grocy_telegram_bot.const import *
 from grocy_telegram_bot.monitoring.monitor import Monitor
 from grocy_telegram_bot.notifier import Notifier
-from grocy_telegram_bot.stats import format_metrics, START_TIME
+from grocy_telegram_bot.stats import format_metrics, COMMAND_TIME_START, COMMAND_TIME_INVENTORY, COMMAND_TIME_CHORES, \
+    COMMAND_TIME_SHOPPING_LIST
 from grocy_telegram_bot.util import send_message, filter_overdue_chores, product_to_str, chore_to_str
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.DEBUG)
-
-COMMAND_START = "start"
-COMMAND_CHAT_ID = "chat_id"
-
-COMMAND_INVENTORY = ["inventory", "i"]
-COMMAND_CHORES = ["chores", "ch"]
-COMMAND_SHOPPING_LIST = ["shopping_list", "sl"]
-
-COMMAND_STATS = 'stats'
-
-COMMAND_COMMANDS = ['help', 'h']
-COMMAND_VERSION = ['version', 'v']
-COMMAND_CONFIG = ['config', 'c']
 
 
 class _ConfigAdmins(Permission):
@@ -59,7 +48,7 @@ class GrocyTelegramBot:
         """
         self._config = config
         self._grocy = Grocy(
-            base_url=f"http://{config.GROCY_HOST.value}",
+            base_url=f"{config.GROCY_HOST.value}",
             api_key=config.GROCY_API_KEY.value,
             port=config.GROCY_PORT.value)
 
@@ -134,7 +123,7 @@ class GrocyTelegramBot:
             self._monitor.stop()
         self._updater.stop()
 
-    @START_TIME.time()
+    @COMMAND_TIME_START.time()
     def _start_callback(self, update: Update, context: CallbackContext) -> None:
         """
         Welcomes a new user with a greeting message
@@ -168,31 +157,6 @@ class GrocyTelegramBot:
         send_message(bot, chat_id, f"{chat_id}", parse_mode=ParseMode.MARKDOWN)
 
     @command(
-        name=COMMAND_INVENTORY,
-        description="List product inventory.",
-        permissions=CONFIG_ADMINS
-    )
-    def _inventory_callback(self, update: Update, context: CallbackContext) -> None:
-        """
-        Show a list of all products in the inventory
-        :param update: the chat update object
-        :param context: telegram context
-        """
-        bot = context.bot
-        chat_id = update.effective_chat.id
-
-        products = self._grocy.stock(True)
-        products = sorted(products, key=lambda x: x.name.lower())
-
-        item_texts = list(list(map(product_to_str, products)))
-        text = "\n".join([
-            "*=> Inventory <=*",
-            *item_texts,
-        ]).strip()
-
-        send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
-
-    @command(
         name=COMMAND_CHORES,
         description="List overdue chores.",
         arguments=[
@@ -207,6 +171,7 @@ class GrocyTelegramBot:
         ],
         permissions=CONFIG_ADMINS
     )
+    @COMMAND_TIME_CHORES.time()
     def _chores_callback(self, update: Update, context: CallbackContext, all: bool) -> None:
         """
         Show a list of all chores
@@ -246,10 +211,37 @@ class GrocyTelegramBot:
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
 
     @command(
+        name=COMMAND_INVENTORY,
+        description="List product inventory.",
+        permissions=CONFIG_ADMINS
+    )
+    @COMMAND_TIME_INVENTORY.time()
+    def _inventory_callback(self, update: Update, context: CallbackContext) -> None:
+        """
+        Show a list of all products in the inventory
+        :param update: the chat update object
+        :param context: telegram context
+        """
+        bot = context.bot
+        chat_id = update.effective_chat.id
+
+        products = self._grocy.stock(True)
+        products = sorted(products, key=lambda x: x.name.lower())
+
+        item_texts = list(list(map(product_to_str, products)))
+        text = "\n".join([
+            "*=> Inventory <=*",
+            *item_texts,
+        ]).strip()
+
+        send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
+
+    @command(
         name=COMMAND_SHOPPING_LIST,
         description="List shopping lists.",
         permissions=CONFIG_ADMINS
     )
+    @COMMAND_TIME_SHOPPING_LIST.time()
     def _shopping_lists_callback(self, update: Update, context: CallbackContext) -> None:
         """
         Show a list of all shopping lists

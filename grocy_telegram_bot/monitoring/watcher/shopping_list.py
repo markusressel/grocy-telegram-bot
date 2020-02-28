@@ -1,15 +1,15 @@
 from typing import List
 
 from pygrocy import Grocy
-from pygrocy.grocy import Chore
+from pygrocy.grocy_api_client import ShoppingListItem
 
 from grocy_telegram_bot.monitoring.watcher import GrocyEntityWatcher
 
 
-class ChoreWatcher(GrocyEntityWatcher):
+class ShoppingListWatcher(GrocyEntityWatcher):
 
     def __init__(self, grocy: Grocy, on_update_listener, interval: float):
         super().__init__(grocy, on_update_listener, interval)
 
-    def _fetch_data(self) -> List[Chore]:
-        return self.grocy.chores(True)
+    def _fetch_data(self) -> List[ShoppingListItem]:
+        return self.grocy.shopping_list(True)

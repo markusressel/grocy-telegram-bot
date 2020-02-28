@@ -1,7 +1,50 @@
-from prometheus_client import Summary
+from prometheus_client import Summary, Gauge
 from prometheus_client.metrics import MetricWrapperBase
 
-START_TIME = Summary('start_processing_seconds', 'Time spent in the /start handler')
+from grocy_telegram_bot.const import *
+
+COMMAND_TIME = Summary('command_processing_seconds', 'Time spent in a command handler', ['command'])
+COMMAND_TIME_START = COMMAND_TIME.labels(command=COMMAND_START)
+COMMAND_TIME_CHORES = COMMAND_TIME.labels(command=COMMAND_CHORES)
+COMMAND_TIME_INVENTORY = COMMAND_TIME.labels(command=COMMAND_INVENTORY)
+COMMAND_TIME_SHOPPING_LIST = COMMAND_TIME.labels(command=COMMAND_SHOPPING_LIST)
+
+PRODUCT_INVENTORY_COUNT = Gauge(
+    'product_inventory_count',
+    'Number of inventory items per product name',
+    ['product_name']
+)
+
+EXPIRED_PRODUCTS_COUNT = Gauge(
+    'expired_products_count',
+    'Number of expired products in inventory'
+)
+
+PRODUCTS_BELOW_MINIMUM_STOCK_COUNT = Gauge(
+    'products_below_minimum_stock_count',
+    'Number of items a product is below its minimum stock',
+    ['product_name']
+)
+
+CHORES_COUNT = Gauge(
+    'chores_count',
+    'Number of overdue chores',
+    ['type']
+)
+
+OVERDUE_CHORES_COUNT = CHORES_COUNT.labels(type="overdue")
+TOTAL_CHORES_COUNT = CHORES_COUNT.labels(type="total")
+
+SHOPPING_LIST_ITEM_COUNT = Gauge(
+    'shopping_list_item_count',
+    'Number items in a shopping list',
+    ['name']
+)
+
+TASK_COUNT = Gauge(
+    'task_count',
+    'Number tasks',
+)
 
 
 def get_metrics() -> []:

@@ -13,7 +13,7 @@ from grocy_telegram_bot.notifier import Notifier
 from grocy_telegram_bot.stats import TOTAL_CHORES_COUNT, OVERDUE_CHORES_COUNT, PRODUCT_INVENTORY_COUNT, \
     EXPIRED_PRODUCTS_COUNT, SHOPPING_LIST_ITEM_COUNT, TASK_COUNT
 from grocy_telegram_bot.util import product_to_str, chore_to_str, filter_overdue_chores, filter_expired_products, \
-    filter_expiring_products
+    filter_expiring_products, filter_new_by_key
 
 
 class Monitor:
@@ -58,16 +58,9 @@ class Monitor:
 
     def _notify_about_new_overdue_chores(self, old: List[Chore], new: List[Chore]):
         # check if a new chore is due
-        old_ids = set(map(lambda x: x.chore_id, old))
-        new_ids = set(map(lambda x: x.chore_id, new))
-        new_overdue = new_ids - old_ids
+        new_overdue = filter_new_by_key(old, new, key=lambda x: x.chore_id)
 
-        lines = []
-        for item_id in new_overdue:
-            chores = list(filter(lambda x: x.chore_id == item_id, new))[0]
-
-            lines.append(chore_to_str(chores))
-
+        lines = list(map(chore_to_str, new_overdue))
         # send notification if required
         if len(lines) > 0:
             message = "\n".join([
@@ -96,15 +89,9 @@ class Monitor:
             self._notify_about_new_expired_products(old_expiring, new_expiring)
 
     def _notify_about_new_expiring_products(self, old: List[Product], new: List[Product]):
-        old_ids = set(map(lambda x: x.product_id, old))
-        new_ids = set(map(lambda x: x.product_id, new))
-        new_expiring = new_ids - old_ids
+        new_expiring = filter_new_by_key(old, new, key=lambda x: x.product_id)
 
-        lines = []
-        for item_id in new_expiring:
-            product = list(filter(lambda x: x.product_id == item_id, new))[0]
-            lines.append(product_to_str(product))
-
+        lines = list(map(product_to_str, new_expiring))
         if len(lines) > 0:
             message = "\n".join([
                 "Product(s) expiring soon:",
@@ -113,15 +100,9 @@ class Monitor:
             self._notifier.notify(message)
 
     def _notify_about_new_expired_products(self, old: List[Product], new: List[Product]):
-        old_ids = set(map(lambda x: x.product_id, old))
-        new_ids = set(map(lambda x: x.product_id, new))
-        new_expiring = new_ids - old_ids
+        new_expired = filter_new_by_key(old, new, key=lambda x: x.product_id)
 
-        lines = []
-        for item_id in new_expiring:
-            product = list(filter(lambda x: x.product_id == item_id, new))[0]
-            lines.append(product_to_str(product))
-
+        lines = list(map(product_to_str, new_expired))
         if len(lines) > 0:
             message = "\n".join([
                 "Product(s) expired:",

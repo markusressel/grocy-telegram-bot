@@ -179,3 +179,22 @@ def filter_expired_products(products: List[Product]):
     date_today = datetime.today().astimezone(tz=timezone.utc)
     products_with_expiry = filter_has_expiry_products(products)
     return list(filter(lambda x: x.best_before_date < date_today, products_with_expiry))
+
+
+def filter_new_by_key(a: List, b: List, key: callable) -> List:
+    """
+    Returns a list of all items, that are new in b when compared to a,
+    using the key function to determine a unique identifier for list items
+    :param a: "old" list
+    :param b: "new" list
+    :param key: function to map list items to a unique identifier
+    :return: new list items
+    """
+    a_ids = set(map(key, a))
+    b_ids = set(map(key, b))
+    new_ids = b_ids - a_ids
+
+    result = []
+    for id in new_ids:
+        result.append(b[id])
+    return result

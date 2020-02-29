@@ -4,7 +4,7 @@ from pygrocy import Grocy
 from telegram import Update, ParseMode
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, \
     CallbackContext
-from telegram_click.argument import Argument
+from telegram_click.argument import Argument, Flag
 from telegram_click.decorator import command
 from telegram_click.permission import PRIVATE_CHAT
 from telegram_click.permission.base import Permission
@@ -160,13 +160,9 @@ class GrocyTelegramBot:
         name=COMMAND_CHORES,
         description="List overdue chores.",
         arguments=[
-            Argument(
+            Flag(
                 name=["all", "a"],
-                description="Show all chores",
-                type=bool,
-                example="1",
-                optional=True,
-                default=False
+                description="Show all chores"
             )
         ],
         permissions=CONFIG_ADMINS
@@ -211,13 +207,9 @@ class GrocyTelegramBot:
         name=COMMAND_INVENTORY,
         description="List product inventory.",
         arguments=[
-            Argument(
+            Flag(
                 name=["missing", "m"],
-                description="Show missing products",
-                type=bool,
-                example="1",
-                optional=True,
-                default=False
+                description="Show missing products"
             ),
         ],
         permissions=CONFIG_ADMINS
@@ -260,13 +252,9 @@ class GrocyTelegramBot:
                 optional=True,
                 default=1
             ),
-            Argument(
+            Flag(
                 name=["add_missing", "a"],
                 description="Add items below minimum stock to the shopping list",
-                type=bool,
-                example="1",
-                optional=True,
-                default=False
             )
         ],
         permissions=CONFIG_ADMINS

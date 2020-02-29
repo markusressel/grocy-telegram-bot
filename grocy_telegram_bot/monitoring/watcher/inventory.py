@@ -21,6 +21,7 @@ class VolatileStockWatcher(GrocyEntityWatcher):
         super().__init__(grocy, on_update_listener, interval)
 
     def _fetch_data(self) -> List[Product]:
+        # TODO: enable this when fixed in pygrocy
         # missing = self.grocy.missing_products(True)
         expiring = self.grocy.expiring_products(True)
         expired = self.grocy.expired_products(True)

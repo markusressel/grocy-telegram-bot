@@ -46,6 +46,14 @@ TASK_COUNT = Gauge(
     'Number tasks',
 )
 
+WATCHER_TIME = Summary('watcher_processing_seconds', 'Time spent in a Watcher run', ['type'])
+
+CHORE_WATCHER_TIME = WATCHER_TIME.labels(type="chore")
+STOCK_WATCHER_TIME = WATCHER_TIME.labels(type="stock")
+VOLATILE_STOCK_WATCHER_TIME = WATCHER_TIME.labels(type="volatile_stock")
+SHOPPING_LIST_WATCHER_TIME = WATCHER_TIME.labels(type="shopping_list")
+TASK_WATCHER_TIME = WATCHER_TIME.labels(type="task")
+
 
 def get_metrics() -> []:
     entries = set()

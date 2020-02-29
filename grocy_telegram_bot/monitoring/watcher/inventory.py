@@ -4,6 +4,7 @@ from pygrocy import Grocy
 from pygrocy.grocy import Product
 
 from grocy_telegram_bot.monitoring.watcher import GrocyEntityWatcher
+from grocy_telegram_bot.stats import VOLATILE_STOCK_WATCHER_TIME, STOCK_WATCHER_TIME
 
 
 class StockWatcher(GrocyEntityWatcher):
@@ -13,6 +14,10 @@ class StockWatcher(GrocyEntityWatcher):
 
     def _fetch_data(self) -> List[Product]:
         return self.grocy.stock(True)
+
+    @STOCK_WATCHER_TIME.time()
+    def _run(self):
+        super()._run()
 
 
 class VolatileStockWatcher(GrocyEntityWatcher):
@@ -27,3 +32,7 @@ class VolatileStockWatcher(GrocyEntityWatcher):
         expired = self.grocy.expired_products(True)
         # return missing + expiring + expired
         return expiring + expired
+
+    @VOLATILE_STOCK_WATCHER_TIME.time()
+    def _run(self):
+        super()._run()

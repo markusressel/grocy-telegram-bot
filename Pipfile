@@ -11,7 +11,8 @@ emoji = "*"
 pygrocy = "*"
 babel = "*"
 prometheus-client = "*"
-fuzzywuzzy = { git = "https://github.com/seatgeek/fuzzywuzzy.git#egg=fuzzywuzzy", ref="0.18.0" }
+fuzzywuzzy = "*"
+python-Levenshtein = "*"
 
 [dev-packages]
 pytest = "*"

@@ -200,7 +200,8 @@ def filter_new_by_key(a: List, b: List, key: callable) -> List:
     return result
 
 
-def fuzzy_match(term: str, choices: List[Any], limit: int = None, key=lambda x: x) -> List[Tuple[Any]]:
+def fuzzy_match(term: str, choices: List[Any], limit: int = None, key=lambda x: x, ignorecase: bool = True) -> List[
+    Tuple[Any, int]]:
     """
     Does a fuzzy search on the given
     :param term: the search term
@@ -210,11 +211,14 @@ def fuzzy_match(term: str, choices: List[Any], limit: int = None, key=lambda x: 
     :return: List of (choice, ratio) tuples, sorted by descending ratio
     """
     # map choices to key
-    key_map = dict(map(lambda x: (key(x), x), choices))
+    if ignorecase:
+        term = term.casefold()
+    choices = filter(lambda x: key(x) is not None, choices)
+    key_map = dict(map(lambda x: (key(x).casefold() if ignorecase else key(x), x), choices))
 
     from fuzzywuzzy import process
     from fuzzywuzzy import fuzz
-    matches = process.extract(term, key_map.keys(), limit=limit, scorer=fuzz.partial_token_sort_ratio)
+    matches = process.extract(term, key_map.keys(), limit=limit, scorer=fuzz.UWRatio)
 
     # map results back to original choices
     result = list(map(lambda x: (key_map[x[0]], x[1]), matches))

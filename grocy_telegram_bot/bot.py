@@ -271,12 +271,24 @@ class GrocyTelegramBot:
         # m_stock = self._grocy.missing_products()
 
         products = stock + ex_stock + ex2_stock
-        matching = fuzzy_match(name, choices=products, key=lambda x: x.name)
+        matches = fuzzy_match(name, choices=products, key=lambda x: x.name, limit=5)
 
-        product_id = 0
+        option_str = list(map(lambda x: "`{}%` {}".format(x[1], x[0].name), matches))
+        text = "Options:\n{}".format("\n".join(option_str))
+        send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
+
+        perfect_matches = list(filter(lambda x: x[1] == 100, matches))
+        if len(perfect_matches) != 1:
+            # TODO: show keyboard with less exact matches for the user to choose from
+            text = "No perfect match found, sending options keyboard to user"
+            send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
+            return
+        product = matches[0][0]
+
+        product_id = product.product_id
         # self._grocy.add_product(product_id=product_id, amount=amount, price=price, best_before_date=exp)
 
-        text = "Not yet implemented"
+        text = "Added {}x {}".format(amount, product.name)
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
 
     @command(

@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 container-app-conf = ">=5.0.0"
 python-telegram-bot = ">=12"
-telegram-click = ">=3.2.0"
+telegram-click = ">=3.3.1"
 emoji = "*"
 pygrocy = "*"
 babel = "*"

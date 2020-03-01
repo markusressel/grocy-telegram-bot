@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from pygrocy import Grocy
 from telegram import Update, ParseMode
@@ -67,6 +68,9 @@ class GrocyTelegramBot:
             CommandHandler(COMMAND_INVENTORY,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._inventory_callback),
+            CommandHandler(COMMAND_INVENTORY_ADD,
+                           filters=(~ Filters.reply) & (~ Filters.forwarded),
+                           callback=self._inventory_add_callback),
 
             CommandHandler(COMMAND_CHORES,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
@@ -160,10 +164,7 @@ class GrocyTelegramBot:
         name=COMMAND_CHORES,
         description="List overdue chores.",
         arguments=[
-            Flag(
-                name=["all", "a"],
-                description="Show all chores"
-            )
+            Flag(name=["all", "a"], description="Show all chores")
         ],
         permissions=CONFIG_ADMINS
     )
@@ -207,10 +208,7 @@ class GrocyTelegramBot:
         name=COMMAND_INVENTORY,
         description="List product inventory.",
         arguments=[
-            Flag(
-                name=["missing", "m"],
-                description="Show missing products"
-            ),
+            Flag(name=["missing", "m"], description="Show missing products"),
         ],
         permissions=CONFIG_ADMINS
     )
@@ -241,21 +239,46 @@ class GrocyTelegramBot:
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
 
     @command(
+        name=COMMAND_INVENTORY_ADD,
+        description="Add a product to inventory.",
+        arguments=[
+            Argument(name=["name"], description="Product name", example="Banana"),
+            Argument(name=["amount"], description="Product amount", type=int, example="2",
+                     validator=lambda x: x > 0),
+            Argument(name=["exp"], description="Expiration date", type=datetime, example="20.01.2020",
+                     # TODO: convert string to datetime
+                     converter=lambda x: datetime.now()),
+            Argument(name=["price"], description="Product price", type=float, example="2.80"),
+        ],
+        permissions=CONFIG_ADMINS
+    )
+    @COMMAND_TIME_INVENTORY.time()
+    def _inventory_add_callback(self, update: Update, context: CallbackContext,
+                                name: str, amount: int, exp: datetime, price: float) -> None:
+        """
+        Add a product to the inventory
+        :param update: the chat update object
+        :param context: telegram context
+        """
+        bot = context.bot
+        chat_id = update.effective_chat.id
+
+        # TODO: find product by fuzzy search
+
+        product_id = 0
+        # self._grocy.add_product(product_id=product_id, amount=amount, price=price, best_before_date=exp)
+
+        text = "Not yet implemented"
+        send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
+
+    @command(
         name=COMMAND_SHOPPING_LIST,
         description="List shopping lists.",
         arguments=[
-            Argument(
-                name=["id"],
-                description="Shopping list id",
-                type=int,
-                example="1",
-                optional=True,
-                default=1
-            ),
-            Flag(
-                name=["add_missing", "a"],
-                description="Add items below minimum stock to the shopping list",
-            )
+            Argument(name=["id"], description="Shopping list id", type=int, example="1",
+                     optional=True, default=1),
+            Flag(name=["add_missing", "a"],
+                 description="Add items below minimum stock to the shopping list")
         ],
         permissions=CONFIG_ADMINS
     )

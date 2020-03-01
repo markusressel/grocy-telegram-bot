@@ -9,6 +9,8 @@ COMMAND_INVENTORY = ["inventory", "i"]
 COMMAND_CHORES = ["chores", "ch"]
 COMMAND_SHOPPING_LIST = ["shopping_list", "sl"]
 
+COMMAND_SYSTEM = ["system", "s"]
+
 COMMAND_STATS = 'stats'
 
 COMMAND_COMMANDS = ['help', 'h']

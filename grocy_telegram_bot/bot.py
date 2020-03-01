@@ -14,7 +14,7 @@ from grocy_telegram_bot.const import *
 from grocy_telegram_bot.monitoring.monitor import Monitor
 from grocy_telegram_bot.notifier import Notifier
 from grocy_telegram_bot.stats import format_metrics, COMMAND_TIME_START, COMMAND_TIME_INVENTORY, COMMAND_TIME_CHORES, \
-    COMMAND_TIME_SHOPPING_LIST
+    COMMAND_TIME_SHOPPING_LIST, COMMAND_TIME_SYSTEM
 from grocy_telegram_bot.util import send_message, filter_overdue_chores, product_to_str, chore_to_str, \
     shopping_list_item_to_str
 
@@ -74,6 +74,10 @@ class GrocyTelegramBot:
             CommandHandler(COMMAND_SHOPPING_LIST,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._shopping_lists_callback),
+            CommandHandler(COMMAND_SYSTEM,
+                           filters=(~ Filters.reply) & (~ Filters.forwarded),
+                           callback=self._system_info_callback),
+
             CommandHandler(COMMAND_STATS,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._stats_callback),
@@ -283,6 +287,27 @@ class GrocyTelegramBot:
             *item_texts,
         ]).strip()
 
+        send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
+
+    @command(
+        name=COMMAND_SYSTEM,
+        description="Show grocy system info.",
+        permissions=CONFIG_ADMINS
+    )
+    @COMMAND_TIME_SYSTEM.time()
+    def _system_info_callback(self, update: Update, context: CallbackContext) -> None:
+        """
+        Show grocy system info
+        :param update: the chat update object
+        :param context: telegram context
+        """
+        bot = context.bot
+        chat_id = update.effective_chat.id
+
+        # TODO: pygrocy update
+        system_info = self._grocy.shopping_list(True)
+
+        text = "Not yet implemented"
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
 
     @command(

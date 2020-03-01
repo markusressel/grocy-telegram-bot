@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime, timezone, timedelta
 from io import BytesIO
-from typing import List
+from typing import List, Any, Tuple
 
 from emoji import emojize
 from pygrocy.grocy import Chore, Product, ShoppingListProduct
@@ -197,4 +197,26 @@ def filter_new_by_key(a: List, b: List, key: callable) -> List:
     result = []
     for id in new_ids:
         result.append(b[id])
+    return result
+
+
+def fuzzy_match(term: str, choices: List[Any], limit: int = None, key=lambda x: x) -> List[Tuple[Any]]:
+    """
+    Does a fuzzy search on the given
+    :param term: the search term
+    :param choices: list of possible choices
+    :param key: function to turn a choice item into a string
+    :param limit: Optional maximum for the number of elements returned
+    :return: List of (choice, ratio) tuples, sorted by descending ratio
+    """
+    # map choices to key
+    key_map = dict(map(lambda x: (key(x), x), choices))
+
+    from fuzzywuzzy import process
+    from fuzzywuzzy import fuzz
+    matches = process.extract(term, key_map.keys(), limit=limit, scorer=fuzz.partial_token_sort_ratio)
+
+    # map results back to original choices
+    result = list(map(lambda x: (key_map[x[0]], x[1]), matches))
+
     return result

@@ -17,7 +17,7 @@ from grocy_telegram_bot.notifier import Notifier
 from grocy_telegram_bot.stats import format_metrics, COMMAND_TIME_START, COMMAND_TIME_INVENTORY, COMMAND_TIME_CHORES, \
     COMMAND_TIME_SHOPPING_LIST
 from grocy_telegram_bot.util import send_message, filter_overdue_chores, product_to_str, chore_to_str, \
-    shopping_list_item_to_str
+    shopping_list_item_to_str, fuzzy_match
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 LOGGER = logging.getLogger(__name__)
@@ -263,7 +263,15 @@ class GrocyTelegramBot:
         bot = context.bot
         chat_id = update.effective_chat.id
 
-        # TODO: find product by fuzzy search
+        stock = self._grocy.stock(True)
+        ex_stock = self._grocy.expiring_products()
+        ex2_stock = self._grocy.expired_products()
+
+        # TODO: add when fixed upstream
+        # m_stock = self._grocy.missing_products()
+
+        products = stock + ex_stock + ex2_stock
+        matching = fuzzy_match(name, choices=products, key=lambda x: x.name)
 
         product_id = 0
         # self._grocy.add_product(product_id=product_id, amount=amount, price=price, best_before_date=exp)

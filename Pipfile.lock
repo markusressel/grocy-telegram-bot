@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "c5d5a7572def33d5fd55ad83005d8bc850ad480af40072fb1060a89f14bdb0ca"
+            "sha256": "11da0904d5aa49c482fb0452749985c41a16487064f40209b16c29a061ab3440"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -124,6 +124,10 @@
                 "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"
             ],
             "version": "==0.18.2"
+        },
+        "fuzzywuzzy": {
+            "git": "https://github.com/seatgeek/fuzzywuzzy.git",
+            "ref": "749d61ab2ea35498c4d04d74dafde9248f253fb4"
         },
         "idna": {
             "hashes": [

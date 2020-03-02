@@ -3,7 +3,7 @@ FROM python:3.8-slim-buster
 RUN apt-get update \
 && apt-get -y upgrade \
 && apt-get -y install \
-        git \ # required for levenshtein
+        git \
         gcc \
         python3-levenshtein
 

@@ -15,3 +15,5 @@ COMMAND_STATS = 'stats'
 COMMAND_COMMANDS = ['help', 'h']
 COMMAND_VERSION = ['version', 'v']
 COMMAND_CONFIG = ['config', 'c']
+
+CANCEL_KEYBOARD_COMMAND = "/cancel_keyboard"

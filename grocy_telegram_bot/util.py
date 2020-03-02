@@ -5,9 +5,8 @@ from datetime import datetime, timezone, timedelta
 from io import BytesIO
 from typing import List, Any, Tuple
 
-from emoji import emojize
 from pygrocy.grocy import Chore, Product, ShoppingListProduct
-from telegram import Bot
+from telegram import Bot, Message, ReplyMarkup
 
 from grocy_telegram_bot.config import Config
 from grocy_telegram_bot.const import TELEGRAM_CAPTION_LENGTH_LIMIT
@@ -106,7 +105,8 @@ def datetime_fmt_date_only(d: datetime):
     return format_date(time.date(), locale=CONFIG.LOCALE.value)
 
 
-def send_message(bot: Bot, chat_id: str, message: str, parse_mode: str = None, reply_to: int = None):
+def send_message(bot: Bot, chat_id: str, message: str, parse_mode: str = None, reply_to: int = None,
+                 menu: ReplyMarkup = None) -> Message:
     """
     Sends a text message to the given chat
     :param bot: the bot
@@ -114,9 +114,13 @@ def send_message(bot: Bot, chat_id: str, message: str, parse_mode: str = None, r
     :param message: the message to chat (may contain emoji aliases)
     :param parse_mode: specify whether to parse the text as markdown or HTML
     :param reply_to: the message id to reply to
+    :param menu: inline keyboard menu markup
     """
+    from emoji import emojize
+
     emojized_text = emojize(message, use_aliases=True)
-    bot.send_message(chat_id=chat_id, parse_mode=parse_mode, text=emojized_text, reply_to_message_id=reply_to)
+    return bot.send_message(chat_id=chat_id, parse_mode=parse_mode, text=emojized_text, reply_to_message_id=reply_to,
+                            reply_markup=menu)
 
 
 def product_to_str(item: Product) -> str:

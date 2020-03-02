@@ -298,8 +298,7 @@ class GrocyTelegramBot:
             return
 
         product = matches[0][0]
-        product_id = product.product_id
-        self._inventory_add_execute(update, context, product_id, amount, exp, price)
+        self._inventory_add_execute(update, context, product, amount, exp, price)
 
     def _add_product_keyboard_response_callback(self, update: Update, context: CallbackContext, message: str,
                                                 data: dict):
@@ -320,7 +319,8 @@ class GrocyTelegramBot:
         product = list(filter(lambda x: x.name == product_name, products))[0]
         self._inventory_add_execute(update, context, product, amount, exp, price)
 
-    def _inventory_add_execute(self, update: Update, context: CallbackContext, product: Product, amount: int,
+    @staticmethod
+    def _inventory_add_execute(update: Update, context: CallbackContext, product: Product, amount: int,
                                exp: datetime, price: float):
         """
         Adds a product to the inventory

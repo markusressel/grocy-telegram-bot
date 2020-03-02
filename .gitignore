@@ -169,4 +169,4 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-grocy_telegram_bot.*
+.grocy_telegram_bot.*

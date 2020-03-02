@@ -1,7 +1,10 @@
 import logging
+from datetime import datetime
+from typing import List
 
 from pygrocy import Grocy
-from telegram import Update, ParseMode
+from pygrocy.grocy import Product
+from telegram import Update, ParseMode, ReplyMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, \
     CallbackContext
 from telegram_click.argument import Argument, Flag
@@ -16,7 +19,7 @@ from grocy_telegram_bot.notifier import Notifier
 from grocy_telegram_bot.stats import format_metrics, COMMAND_TIME_START, COMMAND_TIME_INVENTORY, COMMAND_TIME_CHORES, \
     COMMAND_TIME_SHOPPING_LIST, COMMAND_TIME_SYSTEM
 from grocy_telegram_bot.util import send_message, filter_overdue_chores, product_to_str, chore_to_str, \
-    shopping_list_item_to_str
+    shopping_list_item_to_str, fuzzy_match
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 LOGGER = logging.getLogger(__name__)
@@ -41,6 +44,8 @@ class GrocyTelegramBot:
     The main entry class of the grocy telegram bot
     """
 
+    awaiting_response = {}
+
     def __init__(self, config: Config):
         """
         Creates an instance.
@@ -57,24 +62,28 @@ class GrocyTelegramBot:
 
         self._dispatcher = self._updater.dispatcher
 
-        handlers = [
-            CommandHandler(COMMAND_START,
-                           filters=(~ Filters.reply) & (~ Filters.forwarded),
-                           callback=self._start_callback),
-            CommandHandler(COMMAND_CHAT_ID,
-                           filters=(~ Filters.reply) & (~ Filters.forwarded),
-                           callback=self._chat_id_callback),
-            CommandHandler(COMMAND_INVENTORY,
-                           filters=(~ Filters.reply) & (~ Filters.forwarded),
-                           callback=self._inventory_callback),
+        handler_groups = {
+            0: [
+                CommandHandler(COMMAND_START,
+                               filters=(~ Filters.reply) & (~ Filters.forwarded),
+                               callback=self._start_callback),
+                CommandHandler(COMMAND_CHAT_ID,
+                               filters=(~ Filters.reply) & (~ Filters.forwarded),
+                               callback=self._chat_id_callback),
+                CommandHandler(COMMAND_INVENTORY,
+                               filters=(~ Filters.reply) & (~ Filters.forwarded),
+                               callback=self._inventory_callback),
+                CommandHandler(COMMAND_INVENTORY_ADD,
+                               filters=(~ Filters.reply) & (~ Filters.forwarded),
+                               callback=self._inventory_add_callback),
 
-            CommandHandler(COMMAND_CHORES,
-                           filters=(~ Filters.reply) & (~ Filters.forwarded),
-                           callback=self._chores_callback),
-            CommandHandler(COMMAND_SHOPPING_LIST,
-                           filters=(~ Filters.reply) & (~ Filters.forwarded),
-                           callback=self._shopping_lists_callback),
-            CommandHandler(COMMAND_SYSTEM,
+                CommandHandler(COMMAND_CHORES,
+                               filters=(~ Filters.reply) & (~ Filters.forwarded),
+                               callback=self._chores_callback),
+                CommandHandler(COMMAND_SHOPPING_LIST,
+                               filters=(~ Filters.reply) & (~ Filters.forwarded),
+                               callback=self._shopping_lists_callback),
+                CommandHandler(COMMAND_SYSTEM,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._system_info_callback),
 
@@ -90,14 +99,22 @@ class GrocyTelegramBot:
             CommandHandler(COMMAND_COMMANDS,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._commands_command_callback),
-            # unknown command handler
-            MessageHandler(
-                filters=Filters.command & (~ Filters.forwarded),
-                callback=self._unknown_command_callback),
-        ]
+            CommandHandler(CANCEL_KEYBOARD_COMMAND[1:],
+                               filters=(~ Filters.reply) & (~ Filters.forwarded),
+                               callback=self._cancel_keyboard_callback),
+                # unknown command handler
+                MessageHandler(
+                    filters=Filters.command & (~ Filters.forwarded),
+                    callback=self._unknown_command_callback),
+                MessageHandler(
+                    filters=(~ Filters.forwarded),
+                    callback=self._any_message_callback),
+            ]
+        }
 
-        for handler in handlers:
-            self._updater.dispatcher.add_handler(handler)
+        for group, handlers in handler_groups.items():
+            for handler in handlers:
+                self._updater.dispatcher.add_handler(handler, group=group)
 
         self._monitor = None
         chat_ids = self._config.NOTIFICATION_CHAT_IDS.value
@@ -164,10 +181,7 @@ class GrocyTelegramBot:
         name=COMMAND_CHORES,
         description="List overdue chores.",
         arguments=[
-            Flag(
-                name=["all", "a"],
-                description="Show all chores"
-            )
+            Flag(name=["all", "a"], description="Show all chores")
         ],
         permissions=CONFIG_ADMINS
     )
@@ -211,10 +225,7 @@ class GrocyTelegramBot:
         name=COMMAND_INVENTORY,
         description="List product inventory.",
         arguments=[
-            Flag(
-                name=["missing", "m"],
-                description="Show missing products"
-            ),
+            Flag(name=["missing", "m"], description="Show missing products"),
         ],
         permissions=CONFIG_ADMINS
     )
@@ -245,21 +256,116 @@ class GrocyTelegramBot:
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN)
 
     @command(
+        name=COMMAND_INVENTORY_ADD,
+        description="Add a product to inventory.",
+        arguments=[
+            Argument(name=["name"], description="Product name", example="Banana"),
+            Argument(name=["amount"], description="Product amount", type=int, example="2",
+                     validator=lambda x: x > 0),
+            Argument(name=["exp"], description="Expiration date", type=datetime, example="20.01.2020",
+                     # TODO: convert string to datetime
+                     converter=lambda x: datetime.now()),
+            Argument(name=["price"], description="Product price", type=float, example="2.80"),
+        ],
+        permissions=CONFIG_ADMINS
+    )
+    @COMMAND_TIME_INVENTORY.time()
+    def _inventory_add_callback(self, update: Update, context: CallbackContext,
+                                name: str, amount: int, exp: datetime, price: float) -> None:
+        """
+        Add a product to the inventory
+        :param update: the chat update object
+        :param context: telegram context
+        """
+        bot = context.bot
+        chat_id = update.effective_chat.id
+        message_id = update.effective_message.message_id
+        user_id = update.effective_user.id
+
+        products = self._get_all_products()
+        matches = fuzzy_match(name, choices=products, key=lambda x: x.name, limit=5)
+
+        perfect_matches = list(filter(lambda x: x[1] == 100, matches))
+        if len(perfect_matches) != 1:
+            keyboard_texts = list(map(lambda x: "{}".format(x[0].name), matches))
+            keyboard = self._build_reply_keyboard(keyboard_texts)
+            text = "No unique perfect match found, please select one of the menu options"
+            self.await_response(user_id, keyboard_texts,
+                                ok_callback=self._add_product_keyboard_response_callback,
+                                callback_data={
+                                    "product_name": name,
+                                    "amount": amount,
+                                    "exp": exp,
+                                    "price": price
+                                })
+            send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN, reply_to=message_id, menu=keyboard)
+            return
+
+        product = matches[0][0]
+        product_id = product.product_id
+        self._inventory_add_execute(update, context, product_id, amount, exp, price)
+
+    def _add_product_keyboard_response_callback(self, update: Update, context: CallbackContext, message: str,
+                                                data: dict):
+        """
+        This method is called when a user selects an entry from a keyboard, after
+        a failed attempt to specify an exact product name
+        :param update: the chat update object
+        :param context: telegram context
+        :param message: the selected keyboard entry
+        :param data: callback data
+        """
+        product_name = message
+        amount = data["amount"]
+        exp = data["exp"]
+        price = data["price"]
+
+        products = self._get_all_products()
+        product = list(filter(lambda x: x.name == product_name, products))[0]
+        self._inventory_add_execute(update, context, product, amount, exp, price)
+
+    def _inventory_add_execute(self, update: Update, context: CallbackContext, product: Product, amount: int,
+                               exp: datetime, price: float):
+        """
+        Adds a product to the inventory
+        :param update: the chat update object
+        :param context: telegram context
+        :param product: product entity
+        :param amount: amount
+        :param exp: expiration date
+        :param price: price
+        """
+        bot = context.bot
+        chat_id = update.effective_chat.id
+        message_id = update.effective_message.message_id
+        # TODO: activate when done
+        # self._grocy.add_product(product_id=product.product_id, amount=amount, price=price, best_before_date=exp)
+
+        text = "Added {}x {}".format(amount, product.name)
+        send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN, reply_to=message_id,
+                     menu=ReplyKeyboardRemove(selective=True))
+
+    def _cancel_keyboard_callback(self, update: Update, context: CallbackContext):
+        bot = context.bot
+        chat_id = update.effective_chat.id
+        user_id = update.effective_user.id
+        message_id = update.effective_message.message_id
+
+        text = "Cancelled"
+        send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN, reply_to=message_id,
+                     menu=ReplyKeyboardRemove(selective=True))
+
+        if user_id in self.awaiting_response:
+            self.awaiting_response.pop(user_id)
+
+    @command(
         name=COMMAND_SHOPPING_LIST,
         description="List shopping lists.",
         arguments=[
-            Argument(
-                name=["id"],
-                description="Shopping list id",
-                type=int,
-                example="1",
-                optional=True,
-                default=1
-            ),
-            Flag(
-                name=["add_missing", "a"],
-                description="Add items below minimum stock to the shopping list",
-            )
+            Argument(name=["id"], description="Shopping list id", type=int, example="1",
+                     optional=True, default=1),
+            Flag(name=["add_missing", "a"],
+                 description="Add items below minimum stock to the shopping list")
         ],
         permissions=CONFIG_ADMINS
     )
@@ -400,3 +506,61 @@ class GrocyTelegramBot:
         if user_is_admin:
             self._commands_command_callback(update, context)
             return
+
+    def _any_message_callback(self, update: Update, context: CallbackContext) -> None:
+        """
+        Used to respond to response keyboard entry selections
+        :param update: the chat update object
+        :param context: telegram context
+        """
+        user_id = update.effective_user.id
+        text = update.effective_message.text
+
+        if user_id not in self.awaiting_response:
+            return
+
+        data = self.awaiting_response[user_id]
+        if text in data["valid_responses"]:
+            LOGGER.debug("Awaited response from user {} received: {}".format(user_id, text))
+            try:
+                data["ok_callback"](update, context, text, data["callback_data"])
+                self.awaiting_response.pop(user_id)
+            finally:
+                # TODO: log error
+                pass
+
+    @staticmethod
+    def _build_reply_keyboard(items: List[str]) -> ReplyMarkup:
+        """
+        Builds a menu to select an item from a list
+        :param items: list of items to choose from
+        :return: reply markup
+        """
+        items.append(CANCEL_KEYBOARD_COMMAND)
+        keyboard = list(map(lambda x: KeyboardButton(x), items))
+        # NOTE: the "selective=True" requires the menu to be sent as a reply
+        # (or with an @username mention)
+        return ReplyKeyboardMarkup.from_column(keyboard, one_time_keyboard=True, selective=True)
+
+    def await_response(self, user_id: str, options: List[str], callback_data: dict, ok_callback):
+        """
+        Remember, that we are awaiting a response message from a user
+        :param user_id: the user id
+        :param options: a list of messages that the user can send as a valid response
+        """
+        if user_id in self.awaiting_response:
+            raise AssertionError("Already awaiting response to a previous query from user {}".format(user_id))
+
+        self.awaiting_response[user_id] = {
+            "valid_responses": options,
+            "ok_callback": ok_callback,
+            "callback_data": callback_data
+        }
+
+    def _get_all_products(self) -> List[Product]:
+        stock = self._grocy.stock(True)
+        ex_stock = self._grocy.expiring_products(True)
+        ex2_stock = self._grocy.expired_products(True)
+        # TODO: add when fixed upstream
+        # m_stock = self._grocy.missing_products(True)
+        return stock + ex_stock + ex2_stock

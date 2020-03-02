@@ -11,6 +11,8 @@ emoji = "*"
 pygrocy = "*"
 babel = "*"
 prometheus-client = "*"
+fuzzywuzzy = "*"
+python-Levenshtein = "*"
 
 [dev-packages]
 pytest = "*"

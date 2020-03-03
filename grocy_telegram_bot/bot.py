@@ -261,7 +261,7 @@ class GrocyTelegramBot:
         arguments=[
             Argument(name=["name"], description="Product name", example="Banana"),
             Argument(name=["amount"], description="Product amount", type=int, example="2",
-                     validator=lambda x: x > 0),
+                     validator=lambda x: x > 0, optional=True, default=1),
             Argument(name=["exp"], description="Expiration date or duration", example="20.01.2020",
                      optional=True, default="Never"),
             Argument(name=["price"], description="Product price", type=float, example="2.80",

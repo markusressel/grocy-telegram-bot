@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import List
 
 from pygrocy.grocy import Product
@@ -258,16 +258,15 @@ class GrocyTelegramBot:
             Argument(name=["name"], description="Product name", example="Banana"),
             Argument(name=["amount"], description="Product amount", type=int, example="2",
                      validator=lambda x: x > 0),
-            Argument(name=["exp"], description="Expiration date", type=datetime, example="20.01.2020",
-                     # TODO: convert string to datetime
-                     converter=lambda x: datetime.now()),
-            Argument(name=["price"], description="Product price", type=float, example="2.80"),
+            Argument(name=["exp"], description="Expiration date", type=str, example="20.01.2020", optional=True,
+                     default=NEVER_EXPIRES_DATETIME),
+            Argument(name=["price"], description="Product price", type=float, example="2.80", optional=True),
         ],
         permissions=CONFIG_ADMINS
     )
     @COMMAND_TIME_INVENTORY.time()
     def _inventory_add_callback(self, update: Update, context: CallbackContext,
-                                name: str, amount: int, exp: datetime, price: float) -> None:
+                                name: str, amount: int, exp: str, price: float or None) -> None:
         """
         Add a product to the inventory
         :param update: the chat update object
@@ -277,6 +276,17 @@ class GrocyTelegramBot:
         chat_id = update.effective_chat.id
         message_id = update.effective_message.message_id
         user_id = update.effective_user.id
+
+        if isinstance(exp, str):
+            try:
+                import dateutil
+                exp = dateutil.parser.parse(exp)
+            except:
+                from pytimeparse import parse
+                parsed = parse(exp)
+                if parsed is None:
+                    raise ValueError("Cannot parse the given time format: {}".format(exp))
+                exp = datetime.now() + timedelta(seconds=parsed)
 
         products = self._get_all_products()
         matches = fuzzy_match(name, choices=products, key=lambda x: x.name, limit=5)

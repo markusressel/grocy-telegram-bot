@@ -1,5 +1,9 @@
+from datetime import datetime, timezone
+
 REQUESTS_TIMEOUT = (5, 5)
 TELEGRAM_CAPTION_LENGTH_LIMIT = 200
+
+NEVER_EXPIRES_DATETIME = datetime(year=2999, month=12, day=31).astimezone(tz=timezone.utc)
 
 # Commands
 COMMAND_START = "start"

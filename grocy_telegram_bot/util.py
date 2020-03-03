@@ -150,7 +150,7 @@ def chore_to_str(chore: Chore) -> str:
 
     lines = [chore.name]
     if days_off is not None:
-        lines.append(f"  Due: {days_off} ({date_str})")
+        lines.append(f"  Due: {days_off} days ({date_str})")
 
     return "\n".join(lines)
 

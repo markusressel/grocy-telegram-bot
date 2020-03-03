@@ -9,10 +9,9 @@ from pygrocy.grocy import Chore, Product, ShoppingListProduct
 from telegram import Bot, Message, ReplyMarkup
 
 from grocy_telegram_bot.config import Config
-from grocy_telegram_bot.const import TELEGRAM_CAPTION_LENGTH_LIMIT
+from grocy_telegram_bot.const import TELEGRAM_CAPTION_LENGTH_LIMIT, NEVER_EXPIRES_DATE
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
 
 CONFIG = Config()
 
@@ -128,7 +127,7 @@ def product_to_str(item: Product) -> str:
     amount = parse_int(item.available_amount, item.available_amount)
 
     text = f"{amount}x\t{item.name}"
-    if item.best_before_date < datetime(year=2999, month=12, day=31).astimezone(tz=timezone.utc):
+    if item.best_before_date.date() < NEVER_EXPIRES_DATE:
         expire_date = datetime_fmt_date_only(item.best_before_date)
         text += f" (Exp: {expire_date})"
 
@@ -142,13 +141,18 @@ def chore_to_str(chore: Chore) -> str:
     :return: a text representation
     """
     today_utc_date_with_zero_time = datetime.today().astimezone(tz=timezone.utc)
-    days_off = abs((chore.next_estimated_execution_time - today_utc_date_with_zero_time).days)
-    date_str = datetime_fmt_date_only(chore.next_estimated_execution_time)
 
-    return "\n".join([
-        chore.name,
-        f"  Due: {days_off} days ({date_str})"
-    ])
+    days_off = None
+    date_str = None
+    if chore.next_estimated_execution_time is not None:
+        days_off = abs((chore.next_estimated_execution_time - today_utc_date_with_zero_time).days)
+        date_str = datetime_fmt_date_only(chore.next_estimated_execution_time)
+
+    lines = [chore.name]
+    if days_off is not None:
+        lines.append(f"  Due: {days_off} days ({date_str})")
+
+    return "\n".join(lines)
 
 
 def shopping_list_item_to_str(item: ShoppingListProduct) -> str:
@@ -165,7 +169,9 @@ def shopping_list_item_to_str(item: ShoppingListProduct) -> str:
 
 def filter_overdue_chores(chores: List[Chore]) -> List[Chore]:
     today_utc_date_with_zero_time = datetime.today().astimezone(tz=timezone.utc)
-    return list(filter(lambda x: x.next_estimated_execution_time <= today_utc_date_with_zero_time, chores))
+    return list(filter(lambda x:
+                       x.next_estimated_execution_time is not None
+                       and x.next_estimated_execution_time <= today_utc_date_with_zero_time, chores))
 
 
 def filter_has_expiry_products(products: List[Product]):

@@ -11,13 +11,15 @@ from grocy_telegram_bot.config import Config
 parent_dir = os.path.abspath(os.path.join(os.path.abspath(__file__), "..", ".."))
 sys.path.append(parent_dir)
 
-logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
 
 
 def main():
     config = Config()
+
+    log_level = logging._nameToLevel.get(str(config.LOG_LEVEL.value).upper(), config.LOG_LEVEL.default)
+    logging.getLogger("grocy_telegram_bot").setLevel(log_level)
 
     LOGGER.debug("Config:\n{}".format(config.print(TomlFormatter())))
 

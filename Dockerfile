@@ -1,8 +1,11 @@
 FROM python:3.8-slim-buster
 
 RUN apt-get update \
-&& apt-get upgrade \
-&& apt-get -y install git
+&& apt-get -y upgrade \
+&& apt-get -y install \
+        git \
+        gcc \
+        python3-levenshtein
 
 WORKDIR /app
 

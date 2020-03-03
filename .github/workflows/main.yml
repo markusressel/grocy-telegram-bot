@@ -1,5 +1,5 @@
 name: Update Docker Hub Description
-on: [push, release]
+on: [release]
 jobs:
   dockerHubDescription:
     runs-on: ubuntu-latest

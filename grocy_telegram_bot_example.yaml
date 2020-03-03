@@ -1,10 +1,11 @@
 grocy_telegram_bot:
+  log_level: warning
   locale: en
   grocy:
     api_key: abcdefgh12345678
     host: http://127.0.0.1
     port: 80
-    monitoring_interval: 60s
+    cache_duration: 60s
   stats:
     enabled: true
     port: 8000

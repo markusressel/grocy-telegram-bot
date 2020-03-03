@@ -1,8 +1,7 @@
 import logging
-from datetime import datetime
+from datetime import timedelta
 from typing import List
 
-from pygrocy import Grocy
 from pygrocy.grocy import Product
 from telegram import Update, ParseMode, ReplyMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, \
@@ -12,6 +11,7 @@ from telegram_click.decorator import command
 from telegram_click.permission import PRIVATE_CHAT
 from telegram_click.permission.base import Permission
 
+from grocy_telegram_bot.cache import GrocyCached
 from grocy_telegram_bot.config import Config
 from grocy_telegram_bot.const import *
 from grocy_telegram_bot.monitoring.monitor import Monitor
@@ -23,7 +23,6 @@ from grocy_telegram_bot.util import send_message, filter_overdue_chores, product
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
 
 
 class _ConfigAdmins(Permission):
@@ -52,7 +51,8 @@ class GrocyTelegramBot:
         :param config: configuration object
         """
         self._config = config
-        self._grocy = Grocy(
+
+        self._grocy = GrocyCached(
             base_url=f"{config.GROCY_HOST.value}",
             api_key=config.GROCY_API_KEY.value,
             port=config.GROCY_PORT.value)
@@ -120,7 +120,7 @@ class GrocyTelegramBot:
         chat_ids = self._config.NOTIFICATION_CHAT_IDS.value
         if chat_ids is not None and len(chat_ids) > 0:
             self._notifier = Notifier(self._updater, chat_ids)
-            interval = self._config.GROCY_MONITORING_INTERVAL.value
+            interval = self._config.GROCY_CACHE_DURATION.value + timedelta(seconds=1)
             self._monitor = Monitor(interval, self._notifier, self._grocy)
 
     @property
@@ -196,7 +196,11 @@ class GrocyTelegramBot:
         chat_id = update.effective_chat.id
 
         chores = self._grocy.chores(True)
-        chores = sorted(chores, key=lambda x: x.next_estimated_execution_time)
+        chores = sorted(
+            chores,
+            key=lambda
+                x: datetime.now().astimezone() if x.next_estimated_execution_time is None else x.next_estimated_execution_time
+        )
 
         overdue_chores = filter_overdue_chores(chores)
         other = [item for item in chores if item not in overdue_chores]
@@ -261,17 +265,17 @@ class GrocyTelegramBot:
         arguments=[
             Argument(name=["name"], description="Product name", example="Banana"),
             Argument(name=["amount"], description="Product amount", type=int, example="2",
-                     validator=lambda x: x > 0),
-            Argument(name=["exp"], description="Expiration date", type=datetime, example="20.01.2020",
-                     # TODO: convert string to datetime
-                     converter=lambda x: datetime.now()),
-            Argument(name=["price"], description="Product price", type=float, example="2.80"),
+                     validator=lambda x: x > 0, optional=True, default=1),
+            Argument(name=["exp"], description="Expiration date or duration", example="20.01.2020",
+                     optional=True, default="Never"),
+            Argument(name=["price"], description="Product price", type=float, example="2.80",
+                     validator=lambda x: x > 0, optional=True),
         ],
         permissions=CONFIG_ADMINS
     )
     @COMMAND_TIME_INVENTORY.time()
     def _inventory_add_callback(self, update: Update, context: CallbackContext,
-                                name: str, amount: int, exp: datetime, price: float) -> None:
+                                name: str, amount: int, exp: str, price: float or None) -> None:
         """
         Add a product to the inventory
         :param update: the chat update object
@@ -281,6 +285,20 @@ class GrocyTelegramBot:
         chat_id = update.effective_chat.id
         message_id = update.effective_message.message_id
         user_id = update.effective_user.id
+
+        # parse the expiration date input
+        if exp.casefold() == "never".casefold():
+            exp = NEVER_EXPIRES_DATE
+        else:
+            try:
+                from dateutil import parser
+                exp = parser.parse(exp)
+            except:
+                from pytimeparse import parse
+                parsed = parse(exp)
+                if parsed is None:
+                    raise ValueError("Cannot parse the given time format: {}".format(exp))
+                exp = datetime.now() + timedelta(seconds=parsed)
 
         products = self._get_all_products()
         matches = fuzzy_match(name, choices=products, key=lambda x: x.name, limit=5)
@@ -302,8 +320,7 @@ class GrocyTelegramBot:
             return
 
         product = matches[0][0]
-        product_id = product.product_id
-        self._inventory_add_execute(update, context, product_id, amount, exp, price)
+        self._inventory_add_execute(update, context, product, amount, exp, price)
 
     def _add_product_keyboard_response_callback(self, update: Update, context: CallbackContext, message: str,
                                                 data: dict):
@@ -338,10 +355,10 @@ class GrocyTelegramBot:
         bot = context.bot
         chat_id = update.effective_chat.id
         message_id = update.effective_message.message_id
-        # TODO: activate when done
-        # self._grocy.add_product(product_id=product.product_id, amount=amount, price=price, best_before_date=exp)
+        self._grocy.add_product(product_id=product.product_id, amount=amount, price=price, best_before_date=exp)
 
-        text = "Added {}x {}".format(amount, product.name)
+        text = "Added {}x {} (Exp: {}, Price: {})".format(
+            amount, product.name, "Never" if exp == NEVER_EXPIRES_DATE else exp, price)
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN, reply_to=message_id,
                      menu=ReplyKeyboardRemove(selective=True))
 

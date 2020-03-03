@@ -1,3 +1,6 @@
+import logging
+import re
+
 from container_app_conf import ConfigBase
 from container_app_conf.entry.bool import BoolConfigEntry
 from container_app_conf.entry.int import IntConfigEntry
@@ -35,6 +38,16 @@ class Config(ConfigBase):
         ]
         return super(Config, cls).__new__(cls, data_sources=data_sources)
 
+    LOG_LEVEL = StringConfigEntry(
+        description="Log level",
+        key_path=[
+            NODE_MAIN,
+            "log_level"
+        ],
+        regex=re.compile(f" {'|'.join(logging._nameToLevel.keys())}", flags=re.IGNORECASE),
+        default="WARNING",
+    )
+
     LOCALE = StringConfigEntry(
         description="Bot Locale",
         key_path=[
@@ -68,14 +81,15 @@ class Config(ConfigBase):
         ]
     )
 
-    GROCY_MONITORING_INTERVAL = TimeDeltaConfigEntry(
+    GROCY_CACHE_DURATION = TimeDeltaConfigEntry(
+        description="Duration to cache Grocy REST api call responses",
         key_path=[
             NODE_MAIN,
             NODE_GROCY,
-            "monitoring_interval"
+            "cache_duration"
         ],
         required=True,
-        default="60s"
+        default="60s",
     )
 
     NOTIFICATION_CHAT_IDS = ListConfigEntry(

@@ -1,8 +1,7 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
-from pygrocy import Grocy
 from pygrocy.grocy import Product
 from telegram import Update, ParseMode, ReplyMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, \
@@ -12,6 +11,7 @@ from telegram_click.decorator import command
 from telegram_click.permission import PRIVATE_CHAT
 from telegram_click.permission.base import Permission
 
+from grocy_telegram_bot.cache import GrocyCached
 from grocy_telegram_bot.config import Config
 from grocy_telegram_bot.const import *
 from grocy_telegram_bot.monitoring.monitor import Monitor
@@ -23,7 +23,6 @@ from grocy_telegram_bot.util import send_message, filter_overdue_chores, product
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
 
 
 class _ConfigAdmins(Permission):
@@ -52,7 +51,8 @@ class GrocyTelegramBot:
         :param config: configuration object
         """
         self._config = config
-        self._grocy = Grocy(
+
+        self._grocy = GrocyCached(
             base_url=f"{config.GROCY_HOST.value}",
             api_key=config.GROCY_API_KEY.value,
             port=config.GROCY_PORT.value)
@@ -116,7 +116,7 @@ class GrocyTelegramBot:
         chat_ids = self._config.NOTIFICATION_CHAT_IDS.value
         if chat_ids is not None and len(chat_ids) > 0:
             self._notifier = Notifier(self._updater, chat_ids)
-            interval = self._config.GROCY_MONITORING_INTERVAL.value
+            interval = self._config.GROCY_CACHE_DURATION.value + timedelta(seconds=1)
             self._monitor = Monitor(interval, self._notifier, self._grocy)
 
     @property

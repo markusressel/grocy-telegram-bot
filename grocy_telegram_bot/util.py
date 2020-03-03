@@ -12,7 +12,6 @@ from grocy_telegram_bot.config import Config
 from grocy_telegram_bot.const import TELEGRAM_CAPTION_LENGTH_LIMIT
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
 
 CONFIG = Config()
 

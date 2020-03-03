@@ -5,7 +5,6 @@ from typing import List
 from pygrocy import Grocy
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
 
 
 class RegularIntervalWorker:

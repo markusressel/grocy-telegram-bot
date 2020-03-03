@@ -15,6 +15,7 @@ fuzzywuzzy = "*"
 python-Levenshtein = "*"
 # lru-expiring-cache = "*"
 expiringdict = "*"
+python-dateutil = "*"
 pytimeparse = "*"
 
 [dev-packages]

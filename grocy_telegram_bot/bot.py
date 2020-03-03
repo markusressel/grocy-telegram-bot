@@ -287,8 +287,8 @@ class GrocyTelegramBot:
             exp = NEVER_EXPIRES_DATE
         else:
             try:
-                import dateutil
-                exp = dateutil.parser.parse(exp)
+                from dateutil import parser
+                exp = parser.parse(exp)
             except:
                 from pytimeparse import parse
                 parsed = parse(exp)

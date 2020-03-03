@@ -13,7 +13,8 @@ babel = "*"
 prometheus-client = "*"
 fuzzywuzzy = "*"
 python-Levenshtein = "*"
-lru-expiring-cache = "*"
+# lru-expiring-cache = "*"
+expiringdict = "*"
 
 [dev-packages]
 pytest = "*"

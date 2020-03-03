@@ -1,6 +1,6 @@
 import logging
 
-from lru import LruCache
+from expiringdict import ExpiringDict
 from pygrocy import Grocy
 
 from grocy_telegram_bot.config import Config
@@ -8,7 +8,8 @@ from grocy_telegram_bot.config import Config
 LOGGER = logging.getLogger(__name__)
 
 CONFIG = Config()
-CACHE = LruCache(expires=CONFIG.GROCY_CACHE_DURATION.value.total_seconds(), concurrent=True)
+# CACHE = LruCache(expires=CONFIG.GROCY_CACHE_DURATION.value.total_seconds(), concurrent=True)
+CACHE = ExpiringDict(max_len=100, max_age_seconds=CONFIG.GROCY_CACHE_DURATION.value.total_seconds())
 
 FUNCTIONS_TO_CACHE = [
     "Grocy.stock",
@@ -49,11 +50,10 @@ def cache_decorator(func: classmethod):
 
         if key in CACHE:
             return CACHE[key]
-        else:
-            response = func(*args, **kwargs)
-            LOGGER.debug(f"Caching function response: {key}")
-            CACHE[key] = response
 
+        response = func(*args, **kwargs)
+        LOGGER.debug(f"Caching function response: {key}")
+        CACHE[key] = response
         return response
 
     return wrapper

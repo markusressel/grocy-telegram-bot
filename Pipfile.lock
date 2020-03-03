@@ -177,10 +177,10 @@
         },
         "pygrocy": {
             "hashes": [
-                "sha256:84f881605712010510d6a3223d8fa6289b37ed99f357831945177f1a59833d13"
+                "sha256:1afff7b224c9de418605f34075679ddf693cedfcb851b4fb44fc34e6ecf20551"
             ],
             "index": "pypi",
-            "version": "==0.12.2"
+            "version": "==0.13.0"
         },
         "python-dateutil": {
             "hashes": [

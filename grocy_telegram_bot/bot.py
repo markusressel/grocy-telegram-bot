@@ -258,9 +258,10 @@ class GrocyTelegramBot:
             Argument(name=["name"], description="Product name", example="Banana"),
             Argument(name=["amount"], description="Product amount", type=int, example="2",
                      validator=lambda x: x > 0),
-            Argument(name=["exp"], description="Expiration date", type=str, example="20.01.2020", optional=True,
-                     default=NEVER_EXPIRES_DATETIME),
-            Argument(name=["price"], description="Product price", type=float, example="2.80", optional=True),
+            Argument(name=["exp"], description="Expiration date or duration", example="20.01.2020",
+                     optional=True, default="Never"),
+            Argument(name=["price"], description="Product price", type=float, example="2.80",
+                     validator=lambda x: x > 0, optional=True),
         ],
         permissions=CONFIG_ADMINS
     )
@@ -277,7 +278,10 @@ class GrocyTelegramBot:
         message_id = update.effective_message.message_id
         user_id = update.effective_user.id
 
-        if isinstance(exp, str):
+        # parse the expiration date input
+        if exp.casefold() == "never".casefold():
+            exp = NEVER_EXPIRES_DATE
+        else:
             try:
                 import dateutil
                 exp = dateutil.parser.parse(exp)
@@ -329,8 +333,7 @@ class GrocyTelegramBot:
         product = list(filter(lambda x: x.name == product_name, products))[0]
         self._inventory_add_execute(update, context, product, amount, exp, price)
 
-    @staticmethod
-    def _inventory_add_execute(update: Update, context: CallbackContext, product: Product, amount: int,
+    def _inventory_add_execute(self, update: Update, context: CallbackContext, product: Product, amount: int,
                                exp: datetime, price: float):
         """
         Adds a product to the inventory
@@ -344,10 +347,10 @@ class GrocyTelegramBot:
         bot = context.bot
         chat_id = update.effective_chat.id
         message_id = update.effective_message.message_id
-        # TODO: activate when done
-        # self._grocy.add_product(product_id=product.product_id, amount=amount, price=price, best_before_date=exp)
+        self._grocy.add_product(product_id=product.product_id, amount=amount, price=price, best_before_date=exp)
 
-        text = "Added {}x {}".format(amount, product.name)
+        text = "Added {}x {} (Exp: {}, Price: {})".format(
+            amount, product.name, "Never" if exp == NEVER_EXPIRES_DATE else exp, price)
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN, reply_to=message_id,
                      menu=ReplyKeyboardRemove(selective=True))
 

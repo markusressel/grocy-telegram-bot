@@ -9,7 +9,7 @@ from pygrocy.grocy import Chore, Product, ShoppingListProduct
 from telegram import Bot, Message, ReplyMarkup
 
 from grocy_telegram_bot.config import Config
-from grocy_telegram_bot.const import TELEGRAM_CAPTION_LENGTH_LIMIT, NEVER_EXPIRES_DATETIME
+from grocy_telegram_bot.const import TELEGRAM_CAPTION_LENGTH_LIMIT, NEVER_EXPIRES_DATE
 
 LOGGER = logging.getLogger(__name__)
 
@@ -127,7 +127,7 @@ def product_to_str(item: Product) -> str:
     amount = parse_int(item.available_amount, item.available_amount)
 
     text = f"{amount}x\t{item.name}"
-    if item.best_before_date < NEVER_EXPIRES_DATETIME:
+    if item.best_before_date.date() < NEVER_EXPIRES_DATE:
         expire_date = datetime_fmt_date_only(item.best_before_date)
         text += f" (Exp: {expire_date})"
 

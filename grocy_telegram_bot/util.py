@@ -141,13 +141,18 @@ def chore_to_str(chore: Chore) -> str:
     :return: a text representation
     """
     today_utc_date_with_zero_time = datetime.today().astimezone(tz=timezone.utc)
-    days_off = abs((chore.next_estimated_execution_time - today_utc_date_with_zero_time).days)
-    date_str = datetime_fmt_date_only(chore.next_estimated_execution_time)
 
-    return "\n".join([
-        chore.name,
-        f"  Due: {days_off} days ({date_str})"
-    ])
+    days_off = None
+    date_str = None
+    if chore.next_estimated_execution_time is not None:
+        days_off = abs((chore.next_estimated_execution_time - today_utc_date_with_zero_time).days)
+        date_str = datetime_fmt_date_only(chore.next_estimated_execution_time)
+
+    lines = [chore.name]
+    if days_off is not None:
+        lines.append(f"  Due: {days_off} ({date_str})")
+
+    return "\n".join(lines)
 
 
 def shopping_list_item_to_str(item: ShoppingListProduct) -> str:
@@ -164,7 +169,9 @@ def shopping_list_item_to_str(item: ShoppingListProduct) -> str:
 
 def filter_overdue_chores(chores: List[Chore]) -> List[Chore]:
     today_utc_date_with_zero_time = datetime.today().astimezone(tz=timezone.utc)
-    return list(filter(lambda x: x.next_estimated_execution_time <= today_utc_date_with_zero_time, chores))
+    return list(filter(lambda x:
+                       x.next_estimated_execution_time is not None
+                       and x.next_estimated_execution_time <= today_utc_date_with_zero_time, chores))
 
 
 def filter_has_expiry_products(products: List[Product]):

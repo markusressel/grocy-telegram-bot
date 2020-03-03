@@ -192,7 +192,11 @@ class GrocyTelegramBot:
         chat_id = update.effective_chat.id
 
         chores = self._grocy.chores(True)
-        chores = sorted(chores, key=lambda x: x.next_estimated_execution_time)
+        chores = sorted(
+            chores,
+            key=lambda
+                x: datetime.now().astimezone() if x.next_estimated_execution_time is None else x.next_estimated_execution_time
+        )
 
         overdue_chores = filter_overdue_chores(chores)
         other = [item for item in chores if item not in overdue_chores]

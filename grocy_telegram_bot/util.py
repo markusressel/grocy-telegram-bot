@@ -53,15 +53,15 @@ def send_photo(bot: Bot, chat_id: str, file_id: int or None = None, image_data: 
     """
     Sends a photo to the given chat
     :param bot: the bot
-    :param chat_id: the chat id to send the image to
-    :param file_id: the telegram file id of the already uploaded image
+    :param chat_id: the chat product_id to send the image to
+    :param file_id: the telegram file product_id of the already uploaded image
     :param image_data: the image data
     :param caption: an optional image caption
     :return: a set of telegram image file_id's
     """
     if image_data is not None:
         image_bytes_io = BytesIO(image_data)
-        image_bytes_io.name = 'inspireme.jpeg'
+        image_bytes_io.name = 'image.jpeg'
         photo = image_bytes_io
     elif file_id is not None:
         photo = file_id
@@ -109,10 +109,10 @@ def send_message(bot: Bot, chat_id: str, message: str, parse_mode: str = None, r
     """
     Sends a text message to the given chat
     :param bot: the bot
-    :param chat_id: the chat id to send the message to
+    :param chat_id: the chat product_id to send the message to
     :param message: the message to chat (may contain emoji aliases)
     :param parse_mode: specify whether to parse the text as markdown or HTML
-    :param reply_to: the message id to reply to
+    :param reply_to: the message product_id to reply to
     :param menu: inline keyboard menu markup
     """
     from emoji import emojize
@@ -234,3 +234,4 @@ def fuzzy_match(term: str, choices: List[Any], limit: int = None, key=lambda x: 
     result = list(map(lambda x: (key_map[x[0]], x[1]), matches))
 
     return result
+

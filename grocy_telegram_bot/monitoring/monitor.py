@@ -58,7 +58,7 @@ class Monitor:
 
     def _notify_about_new_overdue_chores(self, old: List[Chore], new: List[Chore]):
         # check if a new chore is due
-        new_overdue = filter_new_by_key(old, new, key=lambda x: x.chore_id)
+        new_overdue = filter_new_by_key(old, new, key=lambda x: x.id)
 
         lines = list(map(chore_to_str, new_overdue))
         # send notification if required
@@ -89,7 +89,7 @@ class Monitor:
             self._notify_about_new_expired_products(old_expiring, new_expiring)
 
     def _notify_about_new_expiring_products(self, old: List[Product], new: List[Product]):
-        new_expiring = filter_new_by_key(old, new, key=lambda x: x.product_id)
+        new_expiring = filter_new_by_key(old, new, key=lambda x: x.id)
 
         lines = list(map(product_to_str, new_expiring))
         if len(lines) > 0:
@@ -100,7 +100,7 @@ class Monitor:
             self._notifier.notify(message)
 
     def _notify_about_new_expired_products(self, old: List[Product], new: List[Product]):
-        new_expired = filter_new_by_key(old, new, key=lambda x: x.product_id)
+        new_expired = filter_new_by_key(old, new, key=lambda x: x.id)
 
         lines = list(map(product_to_str, new_expired))
         if len(lines) > 0:

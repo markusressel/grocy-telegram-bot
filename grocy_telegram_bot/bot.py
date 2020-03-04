@@ -1,11 +1,12 @@
 import logging
 from datetime import timedelta
-from typing import List
+from typing import List, Dict, Tuple
 
-from pygrocy.grocy import Product
-from telegram import Update, ParseMode, ReplyMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from pygrocy.grocy import Product, ShoppingListProduct
+from telegram import Update, ParseMode, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, \
+    InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, \
-    CallbackContext
+    CallbackContext, CallbackQueryHandler
 from telegram_click.argument import Argument, Flag
 from telegram_click.decorator import command
 from telegram_click.permission import PRIVATE_CHAT
@@ -17,7 +18,8 @@ from grocy_telegram_bot.const import *
 from grocy_telegram_bot.monitoring.monitor import Monitor
 from grocy_telegram_bot.notifier import Notifier
 from grocy_telegram_bot.stats import format_metrics, COMMAND_TIME_START, COMMAND_TIME_INVENTORY, COMMAND_TIME_CHORES, \
-    COMMAND_TIME_SHOPPING_LIST
+    COMMAND_TIME_SHOPPING_LIST, COMMAND_TIME_SHOPPING
+from grocy_telegram_bot.telegram_util import ShoppingListItemButtonCallbackData
 from grocy_telegram_bot.util import send_message, filter_overdue_chores, product_to_str, chore_to_str, \
     shopping_list_item_to_str, fuzzy_match
 
@@ -43,7 +45,13 @@ class GrocyTelegramBot:
     The main entry class of the grocy telegram bot
     """
 
+    # this map is used to remember from which users we
+    # are currently awaiting a response message
     awaiting_response = {}
+
+    # this map is used to remember what type is associated
+    # with the callback data of a keyboard button
+    _inline_keyboard_callback_data_map = {}
 
     def __init__(self, config: Config):
         """
@@ -57,13 +65,18 @@ class GrocyTelegramBot:
             api_key=config.GROCY_API_KEY.value,
             port=config.GROCY_PORT.value)
 
+        self._inline_handler_map = {
+            ShoppingListItemButtonCallbackData.command_id: self._shopping_button_pressed_callback
+        }
+
         self._updater = Updater(token=self._config.TELEGRAM_BOT_TOKEN.value, use_context=True)
         LOGGER.debug("Using bot id '{}' ({})".format(self._updater.bot.id, self._updater.bot.name))
 
         self._dispatcher = self._updater.dispatcher
 
         handler_groups = {
-            0: [
+            0: [CallbackQueryHandler(callback=self._inline_keyboard_click_callback)],
+            1: [
                 CommandHandler(COMMAND_START,
                                filters=(~ Filters.reply) & (~ Filters.forwarded),
                                callback=self._start_callback),
@@ -80,6 +93,9 @@ class GrocyTelegramBot:
                 CommandHandler(COMMAND_CHORES,
                                filters=(~ Filters.reply) & (~ Filters.forwarded),
                                callback=self._chores_callback),
+                CommandHandler(COMMAND_SHOPPING,
+                               filters=(~ Filters.reply) & (~ Filters.forwarded),
+                               callback=self._shopping_callback),
                 CommandHandler(COMMAND_SHOPPING_LIST,
                                filters=(~ Filters.reply) & (~ Filters.forwarded),
                                callback=self._shopping_lists_callback),
@@ -296,7 +312,7 @@ class GrocyTelegramBot:
                     raise ValueError("Cannot parse the given time format: {}".format(exp))
                 exp = datetime.now() + timedelta(seconds=parsed)
 
-        products = self._get_all_products()
+        products = self._grocy.get_all_products()
         matches = fuzzy_match(name, choices=products, key=lambda x: x.name, limit=5)
 
         perfect_matches = list(filter(lambda x: x[1] == 100, matches))
@@ -333,7 +349,7 @@ class GrocyTelegramBot:
         exp = data["exp"]
         price = data["price"]
 
-        products = self._get_all_products()
+        products = self._grocy.get_all_products()
         product = list(filter(lambda x: x.name == product_name, products))[0]
         self._inventory_add_execute(update, context, product, amount, exp, price)
 
@@ -351,7 +367,7 @@ class GrocyTelegramBot:
         bot = context.bot
         chat_id = update.effective_chat.id
         message_id = update.effective_message.message_id
-        self._grocy.add_product(product_id=product.product_id, amount=amount, price=price, best_before_date=exp)
+        self._grocy.add_product(product_id=product.id, amount=amount, price=price, best_before_date=exp)
 
         text = "Added {}x {} (Exp: {}, Price: {})".format(
             amount, product.name, "Never" if exp == NEVER_EXPIRES_DATE else exp, price)
@@ -372,8 +388,79 @@ class GrocyTelegramBot:
             self.awaiting_response.pop(user_id)
 
     @command(
+        name=COMMAND_SHOPPING,
+        description="Print shopping list with buttons to check off items.",
+        permissions=CONFIG_ADMINS
+    )
+    @COMMAND_TIME_SHOPPING.time()
+    def _shopping_callback(self, update: Update, context: CallbackContext) -> None:
+        """
+        Show a list of all shopping lists
+        :param update: the chat update object
+        :param context: telegram context
+        """
+        bot = context.bot
+        chat_id = update.effective_chat.id
+
+        # TODO: maybe this should be a flag of /sl
+
+        shopping_list_items = self._grocy.shopping_list(True)
+        # TODO: sort by parent product / product category
+        # TODO: let the user specify the order of product categories, according to the grocery store of his choice
+        sorted(shopping_list_items, key=lambda x: x.product.name)
+
+        item_texts = list(list(map(shopping_list_item_to_str, shopping_list_items)))
+        text = "\n".join([
+            "*=> Shopping List <=*",
+            *item_texts,
+        ]).strip()
+
+        def create_item_tuple(item: ShoppingListProduct) -> Tuple[str, str]:
+            button_title = f"{item.product.name} ({0}/{int(item.amount)})"
+            callback_data = ShoppingListItemButtonCallbackData(
+                shopping_list_item_id=item.id,
+                button_click_count=0,
+                shopping_list_amount=int(item.amount)
+            )
+            callback_data_str = callback_data.minify()
+            return button_title, callback_data_str
+
+        keyboard_items = dict(list(map(create_item_tuple, shopping_list_items)))
+        inline_keyboard_markup = self._build_inline_keyboard(keyboard_items)
+
+        result = send_message(bot, chat_id, text, menu=inline_keyboard_markup, parse_mode=ParseMode.MARKDOWN)
+        self._inline_keyboard_callback_data_map[
+            f"{chat_id}_{result.message_id}"] = ShoppingListItemButtonCallbackData.command_id
+
+    def _shopping_button_pressed_callback(self, update: Update, context: CallbackContext,
+                                          data: ShoppingListItemButtonCallbackData):
+
+        query_id = update.callback_query.id
+        # TODO: add a product to inventory
+
+        shopping_list_items = self._grocy.shopping_list(True)
+        matching_items = list(filter(lambda x: x.id == data.shopping_list_item_id, shopping_list_items))
+
+        shopping_list_item = matching_items[0]
+        product = shopping_list_item.product
+
+        self._grocy.add_product(product_id=product.id, amount=1, price=None, best_before_date=NEVER_EXPIRES_DATE)
+
+        # TODO: this method is not feasible because it replies to a message, which we do not want
+        #  since the only change should be in the keyboard items
+        #  this whole class (bot) needs to be refactored into much more parts,
+        #  possibly per topic (inventory, shopping, task, etc.)
+        # self._inventory_add_execute()
+
+        # TODO: regenerate menu_markup
+        # menu_markup = self._build_inline_keyboard(vote_menu.items)
+        # query.edit_message_reply_markup(reply_markup=menu_markup)
+
+        context.bot.answer_callback_query(query_id, text='Added product to inventory')
+
+    @command(
         name=COMMAND_SHOPPING_LIST,
-        description="List shopping lists.",
+        description="List shopping list items.",
         arguments=[
             Argument(name=["id"], description="Shopping list id", type=int, example="1",
                      optional=True, default=1),
@@ -470,7 +557,7 @@ class GrocyTelegramBot:
     @command(
         name=COMMAND_COMMANDS,
         description="List commands supported by this bot.",
-        permissions=CONFIG_ADMINS
+        permissions=CONFIG_ADMINS,
     )
     def _commands_command_callback(self, update: Update, context: CallbackContext):
         bot = context.bot
@@ -499,6 +586,35 @@ class GrocyTelegramBot:
             self._commands_command_callback(update, context)
             return
 
+    def _inline_keyboard_click_callback(self, update: Update, context: CallbackContext):
+        """
+        Handles inline keyboard button click callbacks
+        :param update:
+        :param context:
+        """
+        bot = context.bot
+        user_id = update.callback_query.from_user.id
+        chat_id = update.effective_chat.id
+        message_id = update.effective_message.message_id
+
+        query = update.callback_query
+        # TODO: is it possible to get this query_id when initially sending the keyboard? -> NOPE, but a chat_id & msg_id key should suffice
+        # then it would be easy to remember the shopping list items in a dict somewhere
+        # to regenerate it with the new counts/amounts
+        query_id = query.id
+        selection_data = query.data
+
+        try:
+            command_id = self._inline_keyboard_callback_data_map.get(f"{chat_id}_{message_id}", None)
+            if command_id is None:
+                bot.answer_callback_query(query_id, text="Unknown message")
+                return
+
+            self._inline_handler_map[command_id](update, context, selection_data)
+        except Exception:
+            logging.exception("Error processing inline keyboard button callback")
+            bot.answer_callback_query(query_id, text="Error")
+
     def _any_message_callback(self, update: Update, context: CallbackContext) -> None:
         """
         Used to respond to response keyboard entry selections
@@ -522,7 +638,7 @@ class GrocyTelegramBot:
                 pass
 
     @staticmethod
-    def _build_reply_keyboard(items: List[str]) -> ReplyMarkup:
+    def _build_reply_keyboard(items: List[str]) -> ReplyKeyboardMarkup:
         """
         Builds a menu to select an item from a list
         :param items: list of items to choose from
@@ -533,6 +649,16 @@ class GrocyTelegramBot:
         # NOTE: the "selective=True" requires the menu to be sent as a reply
         # (or with an @username mention)
         return ReplyKeyboardMarkup.from_column(keyboard, one_time_keyboard=True, selective=True)
+
+    @staticmethod
+    def _build_inline_keyboard(items: Dict[str, str]) -> InlineKeyboardMarkup:
+        """
+        Builds an inline button menu
+        :param items: dictionary of "button text" -> "callback data" items
+        :return: reply markup
+        """
+        keyboard = list(map(lambda x: InlineKeyboardButton(x[0], callback_data=x[1]), items.items()))
+        return InlineKeyboardMarkup.from_column(keyboard)
 
     def await_response(self, user_id: str, options: List[str], callback_data: dict, ok_callback):
         """
@@ -548,11 +674,3 @@ class GrocyTelegramBot:
             "ok_callback": ok_callback,
             "callback_data": callback_data
         }
-
-    def _get_all_products(self) -> List[Product]:
-        stock = self._grocy.stock(True)
-        ex_stock = self._grocy.expiring_products(True)
-        ex2_stock = self._grocy.expired_products(True)
-        # TODO: add when fixed upstream
-        # m_stock = self._grocy.missing_products(True)
-        return stock + ex_stock + ex2_stock

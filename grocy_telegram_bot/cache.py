@@ -1,7 +1,9 @@
 import logging
+from typing import List
 
 from expiringdict import ExpiringDict
 from pygrocy import Grocy
+from pygrocy.grocy import Product
 
 from grocy_telegram_bot.config import Config
 
@@ -75,3 +77,15 @@ class GrocyCached(Grocy):
             return cache_decorator(ret)
         else:
             return ret
+
+    def get_all_products(self) -> List[Product]:
+        """
+        Get a list of all products
+        :return: produtcs
+        """
+        stock = self._grocy.stock(True)
+        ex_stock = self._grocy.expiring_products(True)
+        ex2_stock = self._grocy.expired_products(True)
+        # TODO: add when fixed upstream
+        # m_stock = self._grocy.missing_products(True)
+        return stock + ex_stock + ex2_stock

@@ -1,5 +1,7 @@
+import functools
 import hashlib
 import logging
+import operator
 import os
 from datetime import datetime, timezone, timedelta
 from io import BytesIO
@@ -24,6 +26,14 @@ CONFIG = Config()
 #     image = requests.get(url, timeout=REQUESTS_TIMEOUT)
 #     image.raise_for_status()
 #     return image.content
+
+def flatten(data: List[List[Any]]) -> List[Any]:
+    """
+    Flattens a list of lists
+    :param data: the data to flatten
+    :return: flattened list
+    """
+    return functools.reduce(operator.iconcat, data, [])
 
 
 def create_hash(data: bytes) -> str:
@@ -234,4 +244,3 @@ def fuzzy_match(term: str, choices: List[Any], limit: int = None, key=lambda x: 
     result = list(map(lambda x: (key_map[x[0]], x[1]), matches))
 
     return result
-

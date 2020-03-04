@@ -5,8 +5,10 @@ from grocy_telegram_bot.const import COMMAND_SHOPPING
 
 
 class MinifiableData:
-    _minified_key_to_name = {}
-    _name_to_minified_key = {}
+
+    def __init__(self):
+        self._minified_key_to_name = {}
+        self._name_to_minified_key = {}
 
     @classmethod
     def parse(cls, text: str):
@@ -21,29 +23,25 @@ class MinifiableData:
 
         return instance
 
+    def _get_properties(self):
+        return dict(filter(lambda x: not x[0].startswith('_'), vars(self).items()))
+
     def minify(self) -> str:
         """
         Creates a minified json version of this object
         :return: minified json
         """
-        properties = vars(self)
-        for name in properties.keys():
-            max_len = len(name)
-            length = 1
-            while length <= max_len:
-                minified_key = name[0:length]
-                if minified_key in self._name_to_minified_key:
-                    length += 1
-                else:
-                    self._name_to_minified_key[name] = minified_key
-                    self._minified_key_to_name[minified_key] = name
-                    break
+        self._generate_minified_keys()
 
+        properties = self._get_properties()
         minified_dict = {}
         for name, minified_key in self._name_to_minified_key.items():
             minified_dict[minified_key] = properties[name]
 
-        return self._json_minified(minified_dict)
+        minified = self._json_minified(minified_dict)
+        if len(minified) > 64:
+            raise ValueError(f"Cant minify object, because it would still be to long: {self}")
+        return minified
 
     @staticmethod
     def _json_minified(data: Dict) -> str:
@@ -55,28 +53,33 @@ class MinifiableData:
         return json.dumps(data, indent=None, separators=(',', ':'))
 
     def _generate_minified_keys(self):
-        properties = vars(self)
+        properties = self._get_properties()
         for name in properties.keys():
             max_len = len(name)
             length = 1
             while length <= max_len:
                 minified_key = name[0:length]
-                if minified_key in self._name_to_minified_key:
+                if minified_key in self._minified_key_to_name:
                     length += 1
                 else:
-                    self._name_to_minified_key[name] = minified_key
                     self._minified_key_to_name[minified_key] = name
+                    self._name_to_minified_key[name] = minified_key
                     break
 
 
 class CallbackData(MinifiableData):
     command_id: str
 
+    def __init__(self):
+        super().__init__()
+        self.command_id = self.__class__.command_id
+
 
 class ShoppingListItemButtonCallbackData(CallbackData):
     command_id: str = COMMAND_SHOPPING[1]
 
-    def __init__(self, shopping_list_item_id: int, button_click_count: int, shopping_list_amount: int):
+    def __init__(self, shopping_list_item_id: int, button_click_count: int, shopping_list_amount: int,
+                 *args):
         super().__init__()
         self.shopping_list_item_id = shopping_list_item_id
         self.button_click_count = button_click_count

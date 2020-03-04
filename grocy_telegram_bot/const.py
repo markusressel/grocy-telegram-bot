@@ -17,7 +17,7 @@ COMMAND_SHOPPING_LIST = ["shopping_list", "sl"]
 
 COMMAND_STATS = 'stats'
 
-COMMAND_COMMANDS = ['help', 'h']
+COMMAND_HELP = ['help', 'h']
 COMMAND_VERSION = ['version', 'v']
 COMMAND_CONFIG = ['config', 'c']
 

@@ -108,14 +108,16 @@ class InventoryCommandHandler(GrocyCommandHandler):
             keyboard_texts = list(map(lambda x: "{}".format(x[0].name), matches))
             keyboard = build_reply_keyboard(keyboard_texts)
             text = "No unique perfect match found, please select one of the menu options"
-            self.await_response(user_id, keyboard_texts,
-                                ok_callback=self._add_product_keyboard_response_callback,
-                                callback_data={
-                                    "product_name": name,
-                                    "amount": amount,
-                                    "exp": exp,
-                                    "price": price
-                                })
+            self._response_handler.await_response(
+                user_id=user_id,
+                options=keyboard_texts,
+                callback=self._add_product_keyboard_response_callback,
+                callback_data={
+                    "product_name": name,
+                    "amount": amount,
+                    "exp": exp,
+                    "price": price
+                })
             send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN, reply_to=message_id, menu=keyboard)
             return
 

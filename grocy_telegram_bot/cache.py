@@ -83,9 +83,9 @@ class GrocyCached(Grocy):
         Get a list of all products
         :return: produtcs
         """
-        stock = self._grocy.stock(True)
-        ex_stock = self._grocy.expiring_products(True)
-        ex2_stock = self._grocy.expired_products(True)
+        stock = self.stock(True)
+        ex_stock = self.expiring_products(True)
+        ex2_stock = self.expired_products(True)
         # TODO: add when fixed upstream
-        # m_stock = self._grocy.missing_products(True)
+        # m_stock = self.missing_products(True)
         return stock + ex_stock + ex2_stock

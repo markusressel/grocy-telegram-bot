@@ -4,15 +4,19 @@ from pygrocy import Grocy
 from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Handler
 
+from grocy_telegram_bot.bot import ResponseHandler, KeyboardHandler
 from grocy_telegram_bot.config import Config
 from grocy_telegram_bot.const import CANCEL_KEYBOARD_COMMAND
 
 
 class GrocyCommandHandler:
 
-    def __init__(self, config: Config, grocy: Grocy):
+    def __init__(self, config: Config, grocy: Grocy, response_handler: ResponseHandler,
+                 keyboard_handler: KeyboardHandler):
         self._config = config
         self._grocy = grocy
+        self._response_handler = response_handler
+        self._keyboard_handler = keyboard_handler
 
     def command_handlers(self) -> List[Handler]:
         """

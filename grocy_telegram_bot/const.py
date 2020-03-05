@@ -12,11 +12,12 @@ COMMAND_CHAT_ID = "chat_id"
 COMMAND_INVENTORY = ["inventory", "i"]
 COMMAND_INVENTORY_ADD = ["inventory_add", "ia"]
 COMMAND_CHORES = ["chores", "ch"]
+COMMAND_SHOPPING = ["shopping", "s"]
 COMMAND_SHOPPING_LIST = ["shopping_list", "sl"]
 
 COMMAND_STATS = 'stats'
 
-COMMAND_COMMANDS = ['help', 'h']
+COMMAND_HELP = ['help', 'h']
 COMMAND_VERSION = ['version', 'v']
 COMMAND_CONFIG = ['config', 'c']
 

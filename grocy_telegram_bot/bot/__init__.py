@@ -15,6 +15,7 @@ from grocy_telegram_bot.commands.help import HelpCommandHandler
 from grocy_telegram_bot.commands.inventory import InventoryCommandHandler
 from grocy_telegram_bot.commands.shopping_list import ShoppingListCommandHandler
 from grocy_telegram_bot.commands.stats import StatsCommandHandler
+from grocy_telegram_bot.commands.system import SystemCommandHandler
 from grocy_telegram_bot.commands.version import VersionCommandHandler
 from grocy_telegram_bot.config import Config
 from grocy_telegram_bot.const import *
@@ -61,6 +62,7 @@ class GrocyTelegramBot:
             InventoryCommandHandler(self._config, self._grocy, self._response_handler, self._keyboard_handler),
             ShoppingListCommandHandler(self._config, self._grocy, self._response_handler, self._keyboard_handler),
             StatsCommandHandler(self._config, self._grocy, self._response_handler, self._keyboard_handler),
+            SystemCommandHandler(self._config, self._grocy, self._response_handler, self._keyboard_handler),
             VersionCommandHandler(self._config, self._grocy, self._response_handler, self._keyboard_handler)
         ]
 

@@ -71,6 +71,10 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         query = update.callback_query
         query_id = query.id
 
+        # TODO: Should this be a configuration option or a flag?
+        #  if a flag should be used, this would need to be saved for every keyboard invididually...
+        remove_finished_products_from_keyboard = True
+
         # TODO: there is currently no way to query shopping list ids, so this is hardcoded for now
         shopping_list_id = 1
 
@@ -82,9 +86,10 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         matching_items = list(filter(lambda x: x.id == button_data.shopping_list_item_id, shopping_list_items))
         if len(matching_items) <= 0:
             # if the item is not on the shopping list anymore, show a message
+            context.bot.answer_callback_query(query_id, text=f"The item is not on the shopping list anymore.")
             # TODO: it should still be possible to add items beyond what the shopping list has
-            #  or alternatively remove finished items from the message and keyboard
-            pass
+            #  if "remove_finished_products_from_keyboard" is False
+            return
 
         # if the item is still on the shopping list, remove one item
         item = matching_items[0]
@@ -102,8 +107,12 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         stored_item_title_new = self._generate_button_title(item, stored_item_data)
         # remove the old key
         stored_button_tuples.pop(stored_item_title)
-        # put the modified data back in the dictionary
-        stored_button_tuples[stored_item_title_new] = stored_item_data
+        if stored_item_data.button_click_count >= stored_item_data.shopping_list_amount and remove_finished_products_from_keyboard:
+            # dont put the data back
+            pass
+        else:
+            # put the modified data back in the dictionary
+            stored_button_tuples[stored_item_title_new] = stored_item_data
 
         # add one item to the inventory
         product = item.product
@@ -117,7 +126,8 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         inline_keyboard_markup = build_inline_keyboard(keyboard_items)
 
         query.edit_message_reply_markup(reply_markup=inline_keyboard_markup)
-        context.bot.answer_callback_query(query_id, text=f"Added '{product.name}' to inventory")
+        answer_text = f"Checked off '{product.name}' ({stored_item_data.button_click_count}/{stored_item_data.shopping_list_amount})"
+        context.bot.answer_callback_query(query_id, text=answer_text)
 
     @command(
         name=COMMAND_SHOPPING_LIST,

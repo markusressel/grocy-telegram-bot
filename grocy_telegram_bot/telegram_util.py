@@ -53,6 +53,9 @@ class MinifiableData:
         return json.dumps(data, indent=None, separators=(',', ':'))
 
     def _generate_minified_keys(self):
+        self._minified_key_to_name.clear()
+        self._name_to_minified_key.clear()
+        
         properties = self._get_properties()
         for name in properties.keys():
             max_len = len(name)

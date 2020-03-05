@@ -15,9 +15,12 @@ class KeyboardHandler:
     def __init__(self):
         pass
 
-    def register_listener(self, key: str, command_id: str, callback):
+    def register_listener(self, key: str, command_id: str, callback, callback_data: any):
         self._inline_keyboard__callback_data_type_map[key] = command_id
-        self._inline_keyboard__command_to_callback_map[command_id] = callback
+        self._inline_keyboard__command_to_callback_map[command_id] = {
+            "callback": callback,
+            "callback_data": callback_data
+        }
 
     def inline_keyboard_click_callback(self, update: Update, context: CallbackContext):
         """
@@ -43,7 +46,11 @@ class KeyboardHandler:
                 bot.answer_callback_query(query_id, text="Unknown message")
                 return
 
-            self._inline_keyboard__command_to_callback_map[command_id](update, context, selection_data)
+            callback_info = self._inline_keyboard__command_to_callback_map[command_id]
+            callback = callback_info["callback"]
+            callback_data = callback_info["callback_data"]
+            # call listener
+            callback(update, context, selection_data, callback_data)
         except Exception:
             logging.exception("Error processing inline keyboard button callback")
             bot.answer_callback_query(query_id, text="Error")

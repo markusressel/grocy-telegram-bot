@@ -57,10 +57,11 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         result = send_message(bot, chat_id, text, menu=inline_keyboard_markup, parse_mode=ParseMode.MARKDOWN)
         # register callback for button presses
         self._inline_keyboard_handler.register_listener(
-            f"{chat_id}_{result.message_id}",
-            ShoppingListItemButtonCallbackData.command_id,
-            self._shopping_button_pressed_callback,
-            {
+            chat_id=chat_id,
+            message_id=result.message_id,
+            command_id=ShoppingListItemButtonCallbackData.command_id,
+            callback=self._shopping_button_pressed_callback,
+            callback_data={
                 "shopping_list_items": shopping_list_items,
                 "initial_keyboard_items": initial_button_tuples
             }

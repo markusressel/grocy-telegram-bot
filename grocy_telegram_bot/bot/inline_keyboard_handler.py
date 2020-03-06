@@ -16,7 +16,8 @@ class InlineKeyboardHandler:
     def __init__(self):
         pass
 
-    def register_listener(self, key: str, command_id: str, callback, callback_data: any):
+    def register_listener(self, chat_id: str, message_id: str, command_id: str, callback, callback_data: any):
+        key = f"{chat_id}_{message_id}"
         self._inline_keyboard__callback_data_type_map[key] = command_id
         self._inline_keyboard__command_to_callback_map[command_id] = {
             "callback": callback,

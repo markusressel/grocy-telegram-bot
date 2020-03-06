@@ -15,6 +15,7 @@ COMMAND_INVENTORY_REMOVE = ["inventory_remove", "ir"]
 COMMAND_CHORES = ["chores", "ch"]
 COMMAND_SHOPPING = ["shopping", "s"]
 COMMAND_SHOPPING_LIST = ["shopping_list", "sl"]
+COMMAND_SHOPPING_LIST_ADD = ["shopping_list_add", "sla"]
 
 COMMAND_STATS = 'stats'
 

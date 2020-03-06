@@ -139,14 +139,13 @@ class InventoryCommandHandler(GrocyCommandHandler):
             }
         )
 
-    def _add_product_keyboard_response_callback(self, update: Update, context: CallbackContext, product: Product,
-                                                data: dict):
+    def _add_product_keyboard_response_callback(self, update: Update, context: CallbackContext,
+                                                product: Product, data: dict):
         """
-        This method is called when a user selects an entry from a keyboard, after
-        a failed attempt to specify an exact product name
+        Called when the user has selected a product to add to the inventory
         :param update: the chat update object
         :param context: telegram context
-        :param message: the selected keyboard entry
+        :param product: the selected product
         :param data: callback data
         """
         amount = data["amount"]
@@ -155,11 +154,10 @@ class InventoryCommandHandler(GrocyCommandHandler):
 
         self._inventory_add_execute(update, context, product, amount, exp, price)
 
-    def _remove_product_keyboard_response_callback(self, update: Update, context: CallbackContext, product: Product,
-                                                   data: dict):
+    def _remove_product_keyboard_response_callback(self, update: Update, context: CallbackContext,
+                                                   product: Product, data: dict):
         """
-        This method is called when a user selects an entry from a keyboard, after
-        a failed attempt to specify an exact product name
+        Called when the user has selected a product to remove from to the inventory
         :param update: the chat update object
         :param context: telegram context
         :param product: the selected product

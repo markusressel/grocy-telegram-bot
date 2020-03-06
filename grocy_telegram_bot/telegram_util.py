@@ -6,7 +6,7 @@ from grocy_telegram_bot.const import COMMAND_SHOPPING
 
 class MinifiableData:
 
-    def __init__(self):
+    def __init__(self, *args):
         self._minified_key_to_name = {}
         self._name_to_minified_key = {}
 
@@ -14,6 +14,7 @@ class MinifiableData:
     def parse(cls, text: str):
         minified_dict = json.loads(text)
         # create with random order first
+        # noinspection PyArgumentList
         instance = cls(*minified_dict.values())
         # then generate minified key mapping
         instance._generate_minified_keys()
@@ -55,7 +56,7 @@ class MinifiableData:
     def _generate_minified_keys(self):
         self._minified_key_to_name.clear()
         self._name_to_minified_key.clear()
-        
+
         properties = self._get_properties()
         for name in properties.keys():
             max_len = len(name)
@@ -73,8 +74,8 @@ class MinifiableData:
 class CallbackData(MinifiableData):
     command_id: str
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args):
+        super().__init__(args)
         self.command_id = self.__class__.command_id
 
 
@@ -83,7 +84,7 @@ class ShoppingListItemButtonCallbackData(CallbackData):
 
     def __init__(self, shopping_list_item_id: int, button_click_count: int, shopping_list_amount: int,
                  *args):
-        super().__init__()
+        super().__init__(args)
         self.shopping_list_item_id = shopping_list_item_id
         self.button_click_count = button_click_count
         self.shopping_list_amount = shopping_list_amount

@@ -1,10 +1,11 @@
 import logging
+from typing import Dict
 
-from telegram import Update
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import CallbackContext
 
 
-class KeyboardHandler:
+class InlineKeyboardHandler:
     # this map is used to map a command_id to a callback function
     _inline_keyboard__command_to_callback_map = {}
 
@@ -54,3 +55,13 @@ class KeyboardHandler:
         except Exception:
             logging.exception("Error processing inline keyboard button callback")
             bot.answer_callback_query(query_id, text="Error")
+
+    @staticmethod
+    def build_inline_keyboard(items: Dict[str, str]) -> InlineKeyboardMarkup:
+        """
+        Builds an inline button menu
+        :param items: dictionary of "button text" -> "callback data" items
+        :return: reply markup
+        """
+        keyboard = list(map(lambda x: InlineKeyboardButton(x[0], callback_data=x[1]), items.items()))
+        return InlineKeyboardMarkup.from_column(keyboard)

@@ -6,8 +6,8 @@ from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, \
     CallbackContext, CallbackQueryHandler
 from telegram_click.decorator import command
 
-from grocy_telegram_bot.bot.inline_keyboard_handler import KeyboardHandler
-from grocy_telegram_bot.bot.reply_keyboard_handler import ResponseHandler
+from grocy_telegram_bot.bot.inline_keyboard_handler import InlineKeyboardHandler
+from grocy_telegram_bot.bot.reply_keyboard_handler import ReplyKeyboardHandler
 from grocy_telegram_bot.cache import GrocyCached
 from grocy_telegram_bot.commands.chore import ChoreCommandHandler
 from grocy_telegram_bot.commands.config import ConfigCommandHandler
@@ -44,8 +44,8 @@ class GrocyTelegramBot:
             api_key=config.GROCY_API_KEY.value,
             port=config.GROCY_PORT.value)
 
-        self._response_handler = ResponseHandler()
-        self._keyboard_handler = KeyboardHandler()
+        self._response_handler = ReplyKeyboardHandler()
+        self._keyboard_handler = InlineKeyboardHandler()
 
         self._updater = Updater(token=self._config.TELEGRAM_BOT_TOKEN.value, use_context=True)
         LOGGER.debug("Using bot id '{}' ({})".format(self._updater.bot.id, self._updater.bot.name))

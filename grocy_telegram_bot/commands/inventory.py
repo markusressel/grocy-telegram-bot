@@ -6,12 +6,12 @@ from telegram.ext import Filters, CommandHandler, CallbackContext
 from telegram_click.argument import Flag, Argument
 from telegram_click.decorator import command
 
-from grocy_telegram_bot.commands import GrocyCommandHandler, build_reply_keyboard
+from grocy_telegram_bot.commands import GrocyCommandHandler
 from grocy_telegram_bot.const import COMMAND_INVENTORY, COMMAND_INVENTORY_ADD, NEVER_EXPIRES_DATE, \
     COMMAND_INVENTORY_REMOVE
 from grocy_telegram_bot.permissions import CONFIG_ADMINS
 from grocy_telegram_bot.stats import COMMAND_TIME_INVENTORY
-from grocy_telegram_bot.util import send_message, product_to_str, fuzzy_match
+from grocy_telegram_bot.util import send_message, product_to_str
 
 
 class InventoryCommandHandler(GrocyCommandHandler):
@@ -81,29 +81,15 @@ class InventoryCommandHandler(GrocyCommandHandler):
         :param update: the chat update object
         :param context: telegram context
         """
-        bot = context.bot
-        chat_id = update.effective_chat.id
-        message_id = update.effective_message.message_id
-        user_id = update.effective_user.id
-
         products = self._grocy.get_all_products()
-        matches = fuzzy_match(name, choices=products, key=lambda x: x.name, limit=5)
-
-        perfect_matches = list(filter(lambda x: x[1] == 100, matches))
-        if len(perfect_matches) != 1:
-            keyboard_texts = list(map(lambda x: "{}".format(x[0].name), matches))
-            keyboard = build_reply_keyboard(keyboard_texts)
-            text = "No unique perfect match found, please select one of the menu options"
-            self._response_handler.await_response(
-                user_id=user_id,
-                options=keyboard_texts,
-                callback=self._remove_product_keyboard_response_callback,
-                callback_data={
-                    "product_name": name,
-                    "amount": amount,
-                })
-            send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN, reply_to=message_id, menu=keyboard)
-            return
+        self._reply_keyboard_handler.await_user_selection(
+            update, context, name, choices=products, key=lambda x: x.name,
+            callback=self._remove_product_keyboard_response_callback,
+            callback_data={
+                "product_name": name,
+                "amount": amount,
+            }
+        )
 
     @command(
         name=COMMAND_INVENTORY_ADD,
@@ -127,11 +113,6 @@ class InventoryCommandHandler(GrocyCommandHandler):
         :param update: the chat update object
         :param context: telegram context
         """
-        bot = context.bot
-        chat_id = update.effective_chat.id
-        message_id = update.effective_message.message_id
-        user_id = update.effective_user.id
-
         # parse the expiration date input
         if exp.casefold() == "never".casefold():
             exp = NEVER_EXPIRES_DATE
@@ -147,33 +128,18 @@ class InventoryCommandHandler(GrocyCommandHandler):
                 exp = datetime.now() + timedelta(seconds=parsed)
 
         products = self._grocy.get_all_products()
+        self._reply_keyboard_handler.await_user_selection(
+            update, context, name, choices=products, key=lambda x: x.name,
+            callback=self._add_product_keyboard_response_callback,
+            callback_data={
+                "product_name": name,
+                "amount": amount,
+                "exp": exp,
+                "price": price
+            }
+        )
 
-        # TODO: this fuzzy matching and (if necessary) response callback handling should be
-        #  refactored into some unified place since it will probably be used quite a lot for other commands too
-        matches = fuzzy_match(name, choices=products, key=lambda x: x.name, limit=5)
-
-        perfect_matches = list(filter(lambda x: x[1] == 100, matches))
-        if len(perfect_matches) != 1:
-            keyboard_texts = list(map(lambda x: "{}".format(x[0].name), matches))
-            keyboard = build_reply_keyboard(keyboard_texts)
-            text = "No unique perfect match found, please select one of the menu options"
-            self._response_handler.await_response(
-                user_id=user_id,
-                options=keyboard_texts,
-                callback=self._add_product_keyboard_response_callback,
-                callback_data={
-                    "product_name": name,
-                    "amount": amount,
-                    "exp": exp,
-                    "price": price
-                })
-            send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN, reply_to=message_id, menu=keyboard)
-            return
-
-        product = matches[0][0]
-        self._inventory_add_execute(update, context, product, amount, exp, price)
-
-    def _add_product_keyboard_response_callback(self, update: Update, context: CallbackContext, message: str,
+    def _add_product_keyboard_response_callback(self, update: Update, context: CallbackContext, product: Product,
                                                 data: dict):
         """
         This method is called when a user selects an entry from a keyboard, after
@@ -183,33 +149,27 @@ class InventoryCommandHandler(GrocyCommandHandler):
         :param message: the selected keyboard entry
         :param data: callback data
         """
-        product_name = message
         amount = data["amount"]
         exp = data["exp"]
         price = data["price"]
 
-        products = self._grocy.get_all_products()
-        product = list(filter(lambda x: x.name == product_name, products))[0]
         self._inventory_add_execute(update, context, product, amount, exp, price)
 
-    def _remove_product_keyboard_response_callback(self, update: Update, context: CallbackContext, message: str,
+    def _remove_product_keyboard_response_callback(self, update: Update, context: CallbackContext, product: Product,
                                                    data: dict):
         """
         This method is called when a user selects an entry from a keyboard, after
         a failed attempt to specify an exact product name
         :param update: the chat update object
         :param context: telegram context
-        :param message: the selected keyboard entry
+        :param product: the selected product
         :param data: callback data
         """
         bot = context.bot
         chat_id = update.effective_chat.id
         message_id = update.effective_message.message_id
-        product_name = message
         amount = data["amount"]
 
-        products = self._grocy.get_all_products()
-        product = list(filter(lambda x: x.name == product_name, products))[0]
         self._grocy.add_product(product_id=product.id, amount=-amount)
 
         text = "Removed {}x {}".format(amount, product.name)

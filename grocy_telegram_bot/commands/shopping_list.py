@@ -6,7 +6,7 @@ from telegram.ext import Filters, CommandHandler, CallbackContext
 from telegram_click.argument import Argument, Flag
 from telegram_click.decorator import command
 
-from grocy_telegram_bot.commands import GrocyCommandHandler, build_inline_keyboard
+from grocy_telegram_bot.commands import GrocyCommandHandler
 from grocy_telegram_bot.const import COMMAND_SHOPPING_LIST, COMMAND_SHOPPING, NEVER_EXPIRES_DATE
 from grocy_telegram_bot.permissions import CONFIG_ADMINS
 from grocy_telegram_bot.stats import COMMAND_TIME_SHOPPING_LIST, COMMAND_TIME_SHOPPING
@@ -51,12 +51,12 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         # generate keyboard
         initial_button_tuples = self._create_shopping_list_item_button_tuples(shopping_list_items)
         inline_keyboard_items = self._create_shopping_list_keyboard_items(initial_button_tuples)
-        inline_keyboard_markup = build_inline_keyboard(inline_keyboard_items)
+        inline_keyboard_markup = self._inline_keyboard_handler.build_inline_keyboard(inline_keyboard_items)
 
         # send message
         result = send_message(bot, chat_id, text, menu=inline_keyboard_markup, parse_mode=ParseMode.MARKDOWN)
         # register callback for button presses
-        self._keyboard_handler.register_listener(
+        self._inline_keyboard_handler.register_listener(
             f"{chat_id}_{result.message_id}",
             ShoppingListItemButtonCallbackData.command_id,
             self._shopping_button_pressed_callback,
@@ -123,7 +123,7 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
 
         # regenerate keyboard
         keyboard_items = self._create_shopping_list_keyboard_items(stored_button_tuples)
-        inline_keyboard_markup = build_inline_keyboard(keyboard_items)
+        inline_keyboard_markup = self._inline_keyboard_handler.build_inline_keyboard(keyboard_items)
 
         query.edit_message_reply_markup(reply_markup=inline_keyboard_markup)
         answer_text = f"Checked off '{product.name}' ({stored_item_data.button_click_count}/{stored_item_data.shopping_list_amount})"

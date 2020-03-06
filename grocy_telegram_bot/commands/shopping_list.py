@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from typing import Tuple, List, Dict
 
 from pygrocy.grocy import ShoppingListProduct, Product
@@ -104,7 +105,7 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         shopping_list_items = self._grocy.shopping_list(True)
         # TODO: sort by parent product / product category
         # TODO: let the user specify the order of product categories, according to the grocery store of his choice
-        shopping_list_items = sorted(shopping_list_items, key=lambda x: x.product.name)
+        shopping_list_items = sorted(shopping_list_items, key=lambda x: x.product.name.lower())
 
         # generate message
         text = "*=> Shopping List <=*"
@@ -184,6 +185,8 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
 
         # regenerate keyboard
         keyboard_items = self._create_shopping_list_keyboard_items(stored_button_tuples)
+        # we need to re-sort since the items have changed
+        keyboard_items = OrderedDict(sorted(keyboard_items.items(), key=lambda x: x[0].lower()))
         inline_keyboard_markup = self._inline_keyboard_handler.build_inline_keyboard(keyboard_items)
 
         query.edit_message_reply_markup(reply_markup=inline_keyboard_markup)
@@ -219,7 +222,7 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
 
         # TODO: when supported, pass shopping list id here
         shopping_list_items = self._grocy.shopping_list(True)
-        shopping_list_items = sorted(shopping_list_items, key=lambda x: x.product.name)
+        shopping_list_items = sorted(shopping_list_items, key=lambda x: x.product.name.lower())
 
         item_texts = list(list(map(shopping_list_item_to_str, shopping_list_items)))
         text = "\n".join([
@@ -231,7 +234,7 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
 
     def _create_shopping_list_keyboard_items(self, items: Dict[str, ShoppingListItemButtonCallbackData]) -> Dict[
         str, str]:
-        return dict(list(map(lambda x: (x[0], x[1].minify()), items.items())))
+        return OrderedDict(list(map(lambda x: (x[0], x[1].minify()), items.items())))
 
     def _create_shopping_list_item_button_tuples(self, items: List[ShoppingListProduct]) -> Dict[
         str, ShoppingListItemButtonCallbackData]:
@@ -240,7 +243,7 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         :param items: shopping list items
         :return : button title, button callback data
         """
-        return dict(list(map(self._create_shopping_list_item_button_tuple, items)))
+        return OrderedDict(list(map(self._create_shopping_list_item_button_tuple, items)))
 
     def _create_shopping_list_item_button_tuple(self, item: ShoppingListProduct) -> Tuple[
         str, ShoppingListItemButtonCallbackData]:

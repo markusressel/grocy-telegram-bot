@@ -1,15 +1,16 @@
 from typing import Tuple, List, Dict
 
-from pygrocy.grocy import ShoppingListProduct
-from telegram import Update, ParseMode
+from pygrocy.grocy import ShoppingListProduct, Product
+from telegram import Update, ParseMode, ReplyKeyboardRemove
 from telegram.ext import Filters, CommandHandler, CallbackContext
 from telegram_click.argument import Argument, Flag
 from telegram_click.decorator import command
 
-from grocy_telegram_bot.commands import GrocyCommandHandler, build_inline_keyboard
-from grocy_telegram_bot.const import COMMAND_SHOPPING_LIST, COMMAND_SHOPPING, NEVER_EXPIRES_DATE
+from grocy_telegram_bot.commands import GrocyCommandHandler
+from grocy_telegram_bot.const import COMMAND_SHOPPING_LIST, COMMAND_SHOPPING, NEVER_EXPIRES_DATE, \
+    COMMAND_SHOPPING_LIST_ADD
 from grocy_telegram_bot.permissions import CONFIG_ADMINS
-from grocy_telegram_bot.stats import COMMAND_TIME_SHOPPING_LIST, COMMAND_TIME_SHOPPING
+from grocy_telegram_bot.stats import COMMAND_TIME_SHOPPING_LIST, COMMAND_TIME_SHOPPING, COMMAND_TIME_SHOPPING_LIST_ADD
 from grocy_telegram_bot.telegram_util import ShoppingListItemButtonCallbackData
 from grocy_telegram_bot.util import send_message, shopping_list_item_to_str
 
@@ -24,7 +25,66 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
             CommandHandler(COMMAND_SHOPPING_LIST,
                            filters=(~ Filters.reply) & (~ Filters.forwarded),
                            callback=self._shopping_lists_callback),
+            CommandHandler(COMMAND_SHOPPING_LIST_ADD,
+                           filters=(~ Filters.reply) & (~ Filters.forwarded),
+                           callback=self._shopping_list_add_callback),
         ]
+
+    @command(
+        name=COMMAND_SHOPPING_LIST_ADD,
+        description="Add an item to a shopping list.",
+        arguments=[
+            Argument(name=["name"], description="Product name", example="Banana"),
+            Argument(name=["amount"], description="Product amount", type=int, example="2",
+                     validator=lambda x: x > 0, optional=True, default=1),
+            Argument(name=["id"], description="Shopping list id", type=int, example="1",
+                     optional=True, default=1),
+        ],
+        permissions=CONFIG_ADMINS
+    )
+    @COMMAND_TIME_SHOPPING_LIST_ADD.time()
+    def _shopping_list_add_callback(self, update: Update, context: CallbackContext,
+                                    name: str, amount: int, id: int) -> None:
+        """
+        Show a list of all shopping lists
+        :param update: the chat update object
+        :param context: telegram context
+        :param name: product name
+        :param amount: product amount
+        :param id: shopping list id
+        """
+
+        products = self._grocy.get_all_products()
+        self._reply_keyboard_handler.await_user_selection(
+            update, context, name, choices=products, key=lambda x: x.name,
+            callback=self._add_product_keyboard_response_callback,
+            callback_data={
+                "product_name": name,
+                "amount": amount,
+                "shopping_list_id": id
+            }
+        )
+
+    def _add_product_keyboard_response_callback(self, update: Update, context: CallbackContext,
+                                                product: Product, data: dict):
+        """
+        Called when the user has selected a product to add to a shopping list
+        :param update: the chat update object
+        :param context: telegram context
+        :param product: the selected product
+        :param data: callback data
+        """
+        bot = context.bot
+        chat_id = update.effective_chat.id
+        message_id = update.effective_message.message_id
+
+        amount = data["amount"]
+        shopping_list_id = data["shopping_list_id"]
+        self._grocy.add_product_to_shopping_list(product.id, shopping_list_id, amount)
+
+        text = "Added {}x {}".format(amount, product.name)
+        send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN, reply_to=message_id,
+                     menu=ReplyKeyboardRemove(selective=True))
 
     @command(
         name=COMMAND_SHOPPING,
@@ -51,16 +111,17 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         # generate keyboard
         initial_button_tuples = self._create_shopping_list_item_button_tuples(shopping_list_items)
         inline_keyboard_items = self._create_shopping_list_keyboard_items(initial_button_tuples)
-        inline_keyboard_markup = build_inline_keyboard(inline_keyboard_items)
+        inline_keyboard_markup = self._inline_keyboard_handler.build_inline_keyboard(inline_keyboard_items)
 
         # send message
         result = send_message(bot, chat_id, text, menu=inline_keyboard_markup, parse_mode=ParseMode.MARKDOWN)
         # register callback for button presses
-        self._keyboard_handler.register_listener(
-            f"{chat_id}_{result.message_id}",
-            ShoppingListItemButtonCallbackData.command_id,
-            self._shopping_button_pressed_callback,
-            {
+        self._inline_keyboard_handler.register_listener(
+            chat_id=chat_id,
+            message_id=result.message_id,
+            command_id=ShoppingListItemButtonCallbackData.command_id,
+            callback=self._shopping_button_pressed_callback,
+            callback_data={
                 "shopping_list_items": shopping_list_items,
                 "initial_keyboard_items": initial_button_tuples
             }
@@ -123,7 +184,7 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
 
         # regenerate keyboard
         keyboard_items = self._create_shopping_list_keyboard_items(stored_button_tuples)
-        inline_keyboard_markup = build_inline_keyboard(keyboard_items)
+        inline_keyboard_markup = self._inline_keyboard_handler.build_inline_keyboard(keyboard_items)
 
         query.edit_message_reply_markup(reply_markup=inline_keyboard_markup)
         answer_text = f"Checked off '{product.name}' ({stored_item_data.button_click_count}/{stored_item_data.shopping_list_amount})"

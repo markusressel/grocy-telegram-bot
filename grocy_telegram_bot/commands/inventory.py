@@ -168,7 +168,7 @@ class InventoryCommandHandler(GrocyCommandHandler):
         message_id = update.effective_message.message_id
         amount = data["amount"]
 
-        self._grocy.add_product(product_id=product.id, amount=-amount)
+        self._grocy.add_product(product_id=product.id, amount=-amount, price=None)
 
         text = "Removed {}x {}".format(amount, product.name)
         send_message(bot, chat_id, text, parse_mode=ParseMode.MARKDOWN, reply_to=message_id,

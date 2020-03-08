@@ -44,7 +44,7 @@ def cache_decorator(func: classmethod):
         if func.__qualname__ not in FUNCTIONS_TO_CACHE:
             LOGGER.debug(f"Clearing cache because of non-whitelisted function call: {func.__qualname__}")
             # clear existing cache since the data will probably change
-            invalidate_cache()
+            CACHE.clear()
             # don't cache if not whitelisted
             return func(*args, **kwargs)
 
@@ -59,13 +59,6 @@ def cache_decorator(func: classmethod):
         return response
 
     return wrapper
-
-
-def invalidate_cache():
-    """
-    Removes all cached data
-    """
-    CACHE.clear()
 
 
 class GrocyCached(Grocy):

@@ -1,15 +1,15 @@
 from typing import List
 
-from pygrocy import Grocy
 from telegram.ext import Handler
 
 from grocy_telegram_bot.bot import ReplyKeyboardHandler, InlineKeyboardHandler
+from grocy_telegram_bot.cache import GrocyCached
 from grocy_telegram_bot.config import Config
 
 
 class GrocyCommandHandler:
 
-    def __init__(self, config: Config, grocy: Grocy, reply_keyboard_handler: ReplyKeyboardHandler,
+    def __init__(self, config: Config, grocy: GrocyCached, reply_keyboard_handler: ReplyKeyboardHandler,
                  inline_keyboard_handler: InlineKeyboardHandler):
         self._config = config
         self._grocy = grocy

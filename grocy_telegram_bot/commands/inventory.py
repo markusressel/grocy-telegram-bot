@@ -11,7 +11,7 @@ from grocy_telegram_bot.const import COMMAND_INVENTORY, COMMAND_INVENTORY_ADD, N
     COMMAND_INVENTORY_REMOVE
 from grocy_telegram_bot.permissions import CONFIG_ADMINS
 from grocy_telegram_bot.stats import COMMAND_TIME_INVENTORY
-from grocy_telegram_bot.util import send_message, product_to_str
+from grocy_telegram_bot.util import send_message, product_to_str, timing
 
 
 class InventoryCommandHandler(GrocyCommandHandler):
@@ -47,11 +47,9 @@ class InventoryCommandHandler(GrocyCommandHandler):
         bot = context.bot
         chat_id = update.effective_chat.id
 
-        # if missing:
-        #     # TODO: bugged in pygrocy
-        #     products = self._grocy.missing_products(True)
-        # else:
-        products = self._grocy.stock(True)
+        products = self._grocy.get_all_products()
+        if missing:
+            products = list(filter(lambda x: x.amount == 0, products))
 
         products = sorted(products, key=lambda x: x.name.lower())
 
@@ -154,6 +152,7 @@ class InventoryCommandHandler(GrocyCommandHandler):
 
         self._inventory_add_execute(update, context, product, amount, exp, price)
 
+    @timing
     def _remove_product_keyboard_response_callback(self, update: Update, context: CallbackContext,
                                                    product: Product, data: dict):
         """

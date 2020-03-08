@@ -6,6 +6,7 @@ from pygrocy import Grocy
 from pygrocy.grocy import Product
 
 from grocy_telegram_bot.config import Config
+from grocy_telegram_bot.util import timing
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ FUNCTIONS_TO_CACHE = [
     "Grocy.expired_products",
     "Grocy.expiring_products",
     "Grocy.missing_products",
+    "GrocyCached.get_all_products",
 ]
 
 
@@ -70,6 +72,7 @@ class GrocyCached(Grocy):
         else:
             return ret
 
+    @timing
     def get_all_products(self) -> List[Product]:
         """
         Get a list of all products

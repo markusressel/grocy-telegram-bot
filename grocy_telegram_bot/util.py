@@ -4,7 +4,9 @@ import logging
 import operator
 import os
 from datetime import datetime, timezone, timedelta
+from functools import wraps
 from io import BytesIO
+from time import time
 from typing import List, Any, Tuple
 
 from pygrocy.grocy import Chore, Product, ShoppingListProduct
@@ -16,6 +18,19 @@ from grocy_telegram_bot.const import TELEGRAM_CAPTION_LENGTH_LIMIT, NEVER_EXPIRE
 LOGGER = logging.getLogger(__name__)
 
 CONFIG = Config()
+
+
+def timing(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        ts = time()
+        result = f(*args, **kw)
+        te = time()
+        td = te - ts
+        LOGGER.debug('func:%r took: %2.4f sec' % (f.__name__, td))
+        return result
+
+    return wrap
 
 
 # def download_image_bytes(url: str) -> bytes:

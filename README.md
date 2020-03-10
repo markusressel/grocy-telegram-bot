@@ -3,6 +3,29 @@
 **grocy-telegram-bot** is a telegram bot that allows you to receive notifications
 and interact with [Grocy](https://github.com/grocy/grocy).
 
+# Features
+* Chores
+  * [x] Show a list of overdue chores (or all)
+  * [ ] Check off a chore when done
+* Products
+  * [x] List inventory
+  * [x] Add/Remove a product to the inventory
+* Shopping
+  * [x] List shopping list items
+  * [x] Add missing products to the shopping list 
+  * [x] Show a list of buttons to check off shopping list items and
+        automatically add them to the inventory
+* Recipes
+  * [ ] List recipes
+  * [ ] Add missing items for a recipe to the shopping list
+* Tasks
+  * [ ] List tasks
+  * [ ] Create a new task
+  * [ ] Complete a task
+* Batteries
+  * [ ] List batteries
+  * [ ] Update the charging state of a battery
+
 # How it works
 
 **grocy-telegram-bot** is a self contained python application that talks

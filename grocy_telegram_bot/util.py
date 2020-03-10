@@ -231,7 +231,8 @@ def filter_new_by_key(a: List, b: List, key: callable) -> List:
 
     result = []
     for id in new_ids:
-        result.append(b[id])
+        item_in_b = list(filter(lambda x: key(x) == id, b))[0]
+        result.append(item_in_b)
     return result
 
 

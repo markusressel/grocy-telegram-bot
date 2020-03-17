@@ -29,8 +29,8 @@ NODE_PORT = "port"
 class Config(ConfigBase):
 
     def __new__(cls, *args, **kwargs):
-        yaml_source = YamlSource("grocy_telegram_bot")
-        toml_source = TomlSource("grocy_telegram_bot")
+        yaml_source = YamlSource(NODE_MAIN)
+        toml_source = TomlSource(NODE_MAIN)
         data_sources = [
             EnvSource(),
             yaml_source,

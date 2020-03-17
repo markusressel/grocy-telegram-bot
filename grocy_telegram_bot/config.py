@@ -44,7 +44,7 @@ class Config(ConfigBase):
             NODE_MAIN,
             "log_level"
         ],
-        regex=re.compile(f" {'|'.join(logging._nameToLevel.keys())}", flags=re.IGNORECASE),
+        regex=re.compile(f"{'|'.join(logging._nameToLevel.keys())}", flags=re.IGNORECASE),
         default="WARNING",
     )
 

@@ -149,7 +149,7 @@ def send_message(bot: Bot, chat_id: str, message: str, parse_mode: str = None, r
 
 def product_to_str(item: Product) -> str:
     from pygrocy.utils import parse_int
-    amount = parse_int(item.available_amount, item.available_amount)
+    amount = parse_int(item.available_amount, 0)
 
     text = f"{amount}x\t{item.name}"
     if item.best_before_date is not None and item.best_before_date.date() < NEVER_EXPIRES_DATE:

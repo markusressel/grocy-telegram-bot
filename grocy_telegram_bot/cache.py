@@ -78,9 +78,10 @@ class GrocyCached(Grocy):
         Get a list of all products
         :return: produtcs
         """
-        stock = self.stock(True)
+        stock = self.stock()
+        for s in stock:
+            s.get_details(self._api_client)
         ex_stock = self.expiring_products(True)
         ex2_stock = self.expired_products(True)
-        # TODO: add when fixed upstream
-        # m_stock = self.missing_products(True)
-        return stock + ex_stock + ex2_stock
+        m_stock = self.missing_products(True)
+        return stock + m_stock + ex_stock + ex2_stock

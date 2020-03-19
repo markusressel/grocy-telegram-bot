@@ -152,7 +152,7 @@ def product_to_str(item: Product) -> str:
     amount = parse_int(item.available_amount, item.available_amount)
 
     text = f"{amount}x\t{item.name}"
-    if item.best_before_date.date() < NEVER_EXPIRES_DATE:
+    if item.best_before_date is not None and item.best_before_date.date() < NEVER_EXPIRES_DATE:
         expire_date = datetime_fmt_date_only(item.best_before_date)
         text += f" (Exp: {expire_date})"
 

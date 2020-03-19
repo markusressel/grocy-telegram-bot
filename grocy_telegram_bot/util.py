@@ -201,19 +201,22 @@ def filter_overdue_chores(chores: List[Chore]) -> List[Chore]:
 
 def filter_has_expiry_products(products: List[Product]):
     never_expires_date = datetime(year=2999, month=12, day=31).astimezone(tz=timezone.utc)
-    return list(filter(lambda x: x.best_before_date < never_expires_date, products))
+    return list(filter(lambda x: x.best_before_date is not None
+                                 and x.best_before_date < never_expires_date, products))
 
 
 def filter_expiring_products(products: List[Product], days_to_expiry: int = 5):
     today_minus_expiry_timeframe = datetime.today().astimezone(tz=timezone.utc) - timedelta(days=days_to_expiry)
     products_with_expiry = filter_has_expiry_products(products)
-    return list(filter(lambda x: x.best_before_date < today_minus_expiry_timeframe, products_with_expiry))
+    return list(filter(lambda x: x.best_before_date is not None
+                                 and x.best_before_date < today_minus_expiry_timeframe, products_with_expiry))
 
 
 def filter_expired_products(products: List[Product]):
     date_today = datetime.today().astimezone(tz=timezone.utc)
     products_with_expiry = filter_has_expiry_products(products)
-    return list(filter(lambda x: x.best_before_date < date_today, products_with_expiry))
+    return list(filter(lambda x: x.best_before_date is not None
+                                 and x.best_before_date < date_today, products_with_expiry))
 
 
 def filter_new_by_key(a: List, b: List, key: callable) -> List:

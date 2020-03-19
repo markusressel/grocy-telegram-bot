@@ -71,11 +71,13 @@ class Monitor:
 
     def on_stock_update(self, old: List[Product], new: List[Product]):
         for product in new:
-            PRODUCT_INVENTORY_COUNT.labels(product_name=product.name).set(product.available_amount)
+            amount = product.available_amount if product.available_amount else 0
+            PRODUCT_INVENTORY_COUNT.labels(product_name=product.name).set(amount)
 
     def on_volatile_stock_update(self, old: List[Product], new: List[Product]):
         for product in new:
-            PRODUCT_INVENTORY_COUNT.labels(product_name=product.name).set(product.available_amount)
+            amount = product.available_amount if product.available_amount else 0
+            PRODUCT_INVENTORY_COUNT.labels(product_name=product.name).set(amount)
 
         new_expired = filter_expired_products(new)
         EXPIRED_PRODUCTS_COUNT.set(len(new_expired))

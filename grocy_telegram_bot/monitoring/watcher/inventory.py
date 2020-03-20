@@ -17,7 +17,7 @@ class StockWatcher(GrocyEntityWatcher):
         for i in items:
             i.get_details(self.grocy._api_client)
 
-        return self.grocy.stock()
+        return items
 
     @STOCK_WATCHER_TIME.time()
     def _run(self):

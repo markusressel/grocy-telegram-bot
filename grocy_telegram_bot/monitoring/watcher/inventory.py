@@ -13,6 +13,10 @@ class StockWatcher(GrocyEntityWatcher):
         super().__init__(grocy, on_update_listener, interval)
 
     def _fetch_data(self) -> List[Product]:
+        items = self.grocy.stock()
+        for i in items:
+            i.get_details(self.grocy._api_client)
+
         return self.grocy.stock()
 
     @STOCK_WATCHER_TIME.time()

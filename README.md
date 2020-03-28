@@ -57,7 +57,7 @@ See [grocy_telegram_bot_example.yaml](/grocy_telegram_bot_example.yaml) for an e
 Start the bot by using:
 
 ```shell script
-grocy-python-bot
+grocy-telegram-bot
 ```
 
 ## Docker

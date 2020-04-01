@@ -200,11 +200,11 @@
         },
         "python-telegram-bot": {
             "hashes": [
-                "sha256:4796f794cd55d2d77dbd242cd2e4081c0664384ec4fbdb046501f9d32619560a",
-                "sha256:f330c8ce72e167e048a92cd9996d8752b77d260f938664c2aec1ca753fe1118c"
+                "sha256:6d69fb04dc8d83e01cb25a0d83aaa2a1a4b7d5b14cd38b9f8922a567b4a4a510",
+                "sha256:af36fbf051415ded8b2633f27b71d292efcd85d58a647a1f138db191380144ff"
             ],
             "index": "pypi",
-            "version": "==12.5"
+            "version": "==12.5.1"
         },
         "pytimeparse": {
             "hashes": [

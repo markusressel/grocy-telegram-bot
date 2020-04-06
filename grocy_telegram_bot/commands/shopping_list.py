@@ -54,7 +54,6 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         :param amount: product amount
         :param id: shopping list id
         """
-
         products = self._grocy.get_all_products()
         self._reply_keyboard_handler.await_user_selection(
             update, context, name, choices=products, key=lambda x: x.name,
@@ -133,15 +132,12 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         query = update.callback_query
         query_id = query.id
 
-        # TODO: Should this be a configuration option or a flag?
-        #  if a flag should be used, this would need to be saved for every keyboard invididually...
-        remove_finished_products_from_keyboard = True
-
         # TODO: there is currently no way to query shopping list ids, so this is hardcoded for now
         shopping_list_id = 1
 
         # retrieve shopping list from grocy
         # TODO: use list in store or from api?
+        #  using old one for now since it should be way faster
         # shopping_list_items = self._grocy.shopping_list(True)
         shopping_list_items = data["shopping_list_items"]
         # find the matching item
@@ -149,8 +145,6 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         if len(matching_items) <= 0:
             # if the item is not on the shopping list anymore, show a message
             context.bot.answer_callback_query(query_id, text=f"The item is not on the shopping list anymore.")
-            # TODO: it should still be possible to add items beyond what the shopping list has
-            #  if "remove_finished_products_from_keyboard" is False
             return
 
         # if the item is still on the shopping list, remove one item
@@ -158,7 +152,15 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         response = self._grocy.remove_product_in_shopping_list(item.product_id, shopping_list_id, amount=1)
         if response is not None:
             response.raise_for_status()
-        # also remove it from the keyboard
+
+        # add one item to the inventory
+        product = item.product
+        response = self._grocy.add_product(
+            product_id=product.id, amount=1, price=None, best_before_date=NEVER_EXPIRES_DATE)
+        if response is not None:
+            response.raise_for_status()
+
+        # then update the keyboard (list of buttons)
         stored_button_tuples = data["initial_keyboard_items"]
         # find the item in button tuples
         stored_item_title, stored_item_data = \
@@ -167,21 +169,15 @@ class ShoppingListCommandHandler(GrocyCommandHandler):
         stored_item_data.button_click_count += 1
         # generate the new button text
         stored_item_title_new = self._generate_button_title(item, stored_item_data)
-        # remove the old key
+        # remove the old data
         stored_button_tuples.pop(stored_item_title)
-        if stored_item_data.button_click_count >= stored_item_data.shopping_list_amount and remove_finished_products_from_keyboard:
-            # dont put the data back
+        if (stored_item_data.button_click_count >= stored_item_data.shopping_list_amount
+                and self._config.BOT_SHOPPING_REMOVE_BUTTON_WHEN_COMPLETE.value):
+            # if all items were checked off, we are done here
             pass
         else:
-            # put the modified data back in the dictionary
+            # otherwise put the modified data back in the dictionary
             stored_button_tuples[stored_item_title_new] = stored_item_data
-
-        # add one item to the inventory
-        product = item.product
-        response = self._grocy.add_product(product_id=product.id, amount=1, price=None,
-                                           best_before_date=NEVER_EXPIRES_DATE)
-        if response is not None:
-            response.raise_for_status()
 
         # regenerate keyboard
         keyboard_items = self._create_shopping_list_keyboard_items(stored_button_tuples)

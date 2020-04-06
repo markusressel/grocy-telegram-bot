@@ -14,6 +14,10 @@ from py_range_parse import Range
 
 NODE_MAIN = "grocy_telegram_bot"
 
+NODE_BOT = "bot"
+
+NODE_SHOPPING = "shopping"
+
 NODE_NOTIFICATION = "notification"
 NODE_TELEGRAM = "telegram"
 
@@ -134,6 +138,18 @@ class Config(ConfigBase):
         required=True,
         example="abcdefgh12345678",
         secret=True
+    )
+
+    BOT_SHOPPING_REMOVE_BUTTON_WHEN_COMPLETE = BoolConfigEntry(
+        description="Whether to remove buttons of complete items "
+                    "from the telegram shopping list (not the one in Grocy!)",
+        key_path=[
+            NODE_MAIN,
+            NODE_BOT,
+            NODE_SHOPPING,
+            "remove_button_when_complete"
+        ],
+        default=True
     )
 
     STATS_ENABLED = BoolConfigEntry(

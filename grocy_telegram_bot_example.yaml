@@ -1,6 +1,9 @@
 grocy_telegram_bot:
   log_level: warning
   locale: en
+  bot:
+    shopping:
+      remove_button_when_complete: True
   grocy:
     api_key: abcdefgh12345678
     host: http://127.0.0.1
